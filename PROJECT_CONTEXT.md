@@ -247,3 +247,26 @@ Trước khi sửa mã:
 ---
 
 *Tài liệu này là bản ghi bối cảnh để tiếp tục phát triển, **không thay thế BRD/SRS đã được phê duyệt, nghiệm thu UAT hoặc tài liệu vận hành production**.*
+
+
+## 12. Cập nhật triển khai Cloudflare ngày 12/11/2026
+
+**Đã kiểm tra trực tiếp qua Cloudflare API**:
+
+- Cloudflare Pages: `crm-ctfood`, tài khoản `00c6e399d9baf5da69a16301d8c5e4a6`; liên kết GitHub `truongtho6699/CRM-CTFood` nhánh `main`.
+- Trang dự kiến: https://crm-ctfood.pages.dev
+- Cấu hình build đã đặt: `npm run build`, thư mục `dist`.
+- Đã tạo **D1** riêng tên `ctfood-crm`, ID `31866ea2-8f55-4dcb-b504-58bb3f3059b9`, khu vực APAC.
+- Đã áp dụng `0001_init.sql` vào D1 và đọc lại các bảng: `app_users`, `customers`, `products`, `orders`, `order_lines`, `deliveries`, `containers`, `payments`, `payment_allocations`, `activities`, `audit_log`.
+- Đã binding Pages Functions `DB` tới D1 trên cả Preview và Production.
+- Đã thêm `functions/api/health.js` để kiểm tra kết nối D1, và `functions/api/[[path]].js` cho API bảo vệ quyền. Phần này có mã trong repo.
+- Đã xác nhận một deployment Cloudflare Pages chạy **build/deploy thành công và `uses_functions=true`** (commit `cc7d7228d9a83e1f2ac6370a1d99f53ca19ee111`).
+- **BẢO MẬT CHƯA HOÀN TẤT**: Cloudflare API trả `access.api.error.not_enabled`. Chưa có ứng dụng Access/đăng nhập được cấp quyền. Các API nghiệp vụ sẽ từ chối truy cập khi thiếu cấu hình Access.
+- **CHƯA ĐẠT YÊU CẦU LƯU DỮ LIỆU QUA GIAO DIỆN**: frontend vẫn dùng `localStorage`; D1 đã tạo cấu trúc nhưng chưa mở API ghi an toàn và chưa kết nối frontend ↔ API D1.
+
+**Việc phải làm tiếp:**
+1. Kích hoạt Cloudflare Access trên tài khoản (có sự đồng ý của quản trị viên) và cấu hình ứng dụng bảo vệ `crm-ctfood.pages.dev`, chính sách nhóm người được phép truy cập.
+2. Cấu hình `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD` cho API; kiểm tra JWT và ánh xạ người dùng trong `app_users`.
+3. Hoàn thiện endpoints `POST/PATCH` có validation, phân quyền theo bản ghi, audit và giao dịch; kết nối giao diện để **lưu D1**.
+4. Kiểm tra smoke test trang chủ và `/api/health`, luồng tạo/đọc/sửa khách hàng và đơn hàng bằng dữ liệu thử.
+5. Chưa đưa dữ liệu thật vào D1 trước khi kiểm thử bảo mật, xác minh backup/restore và quy tắc nghiệp vụ.
