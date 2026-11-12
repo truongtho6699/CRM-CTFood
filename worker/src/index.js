@@ -29,6 +29,7 @@ const access={
  containers:['ADMIN','BOD','ACCOUNTING','SALES_MANAGER','SALES','SALES_ADMIN','LOGISTICS'],
  payments:['ADMIN','BOD','ACCOUNTING','SALES_MANAGER','SALES','SALES_ADMIN'],
  activities:['ADMIN','BOD','ACCOUNTING','SALES_MANAGER','SALES','SALES_ADMIN'],
+ leads:['ADMIN','BOD','ACCOUNTING','SALES_MANAGER','SALES','SALES_ADMIN'],
 };
 const financeColumns=new Set(['cost_per_kg','cost_amount','margin','gross_profit']);
 async function listEntity(env,user,entity,params){
@@ -57,6 +58,9 @@ async function listEntity(env,user,entity,params){
  }else if(entity==='payments'){
   sql='SELECT p.id,p.customer_id,p.amount,p.payment_date,p.payment_type,p.reference,p.created_at FROM payments p';
   if(salesFilter(user)){sql+=' WHERE EXISTS(SELECT 1 FROM customers c WHERE c.id=p.customer_id AND c.owner_email=?)';bind.push(user.email)}
+ }else if(entity==='leads'){
+  sql='SELECT id,name,contact,owner_email,stage,created_at FROM leads';
+  if(salesFilter(user)){sql+=' WHERE owner_email=?';bind.push(user.email)}
  }else if(entity==='activities'){
   sql='SELECT id,customer_id,title,due_date,owner_email,status FROM activities';
   if(salesFilter(user)){sql+=' WHERE owner_email=?';bind.push(user.email)}
@@ -73,6 +77,59 @@ async function listEntity(env,user,entity,params){
  const {results}=await env.DB.prepare(sql).bind(...bind).all();
  return response({ok:true,data:results||[],pagination:{limit,offset,hasMore:(results||[]).length===limit}});
 }
+
+const writable=new Set(['customers','products','leads']);
+function trimText(x,max=255){return typeof x==='string'?x.trim().slice(0,max):''}
+function validated(entity,payload){
+ if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Object.assign(new Error('Dữ liệu không hợp lệ'),{status:400});
+ const name=trimText(payload.name,220);
+ if(!name)throw Object.assign(new Error('Tên không được trống'),{status:400});
+ if(entity==='customers')return {name,phone:trimText(payload.phone,40),tax_code:trimText(payload.tax??payload.tax_code,35)||null,region:trimText(payload.region,100),status:trimText(payload.status,40)||'ACTIVE',address:trimText(payload.address,300)};
+ if(entity==='products')return {name,category:trimText(payload.group??payload.category,100),origin:trimText(payload.origin,100),unit:trimText(payload.unit,25)||'kg'};
+ if(entity==='leads')return {name,contact:trimText(payload.contact,100),stage:trimText(payload.stage,50)||'Mới'};
+ throw Object.assign(new Error('Phân hệ chưa hỗ trợ lưu D1'),{status:405});
+}
+async function saveEntity(env,user,entity,request,method,id){
+ if(!writable.has(entity))return bad('Chức năng lưu D1 của phân hệ này chưa nghiệm thu',405);
+ if(!['ADMIN','BOD','SALES_MANAGER','SALES_ADMIN'].includes(user.role) && !(user.role==='SALES' && entity!=='products'))return bad('Không được phép cập nhật',403);
+ const raw=await request.text();
+ if(raw.length>15000)return bad('Dữ liệu quá lớn',413);
+ let payload;try{payload=JSON.parse(raw)}catch{return bad('JSON không hợp lệ',400)}
+ const v=validated(entity,payload);
+ const entityId=method==='POST'?crypto.randomUUID():id;
+ if(!entityId||entityId.length>100)return bad('Mã bản ghi không hợp lệ',400);
+ let old=null;
+ if(method==='PATCH'){
+  old=await env.DB.prepare('SELECT * FROM '+entity+' WHERE id=?').bind(entityId).first();
+  if(!old)return bad('Không tìm thấy bản ghi',404);
+  if(user.role==='SALES' && old.owner_email!==user.email)return bad('Không có quyền sửa bản ghi này',403);
+ }
+ const now=new Date().toISOString();
+ let stmt;
+ if(entity==='customers'){
+  const owner=method==='PATCH'?old.owner_email:user.email;
+  stmt=method==='POST'
+   ?env.DB.prepare('INSERT INTO customers(id,name,tax_code,phone,region,address,owner_email,status) VALUES(?,?,?,?,?,?,?,?)').bind(entityId,v.name,v.tax_code,v.phone,v.region,v.address,owner,v.status)
+   :env.DB.prepare('UPDATE customers SET name=?,tax_code=?,phone=?,region=?,address=?,status=?,updated_at=? WHERE id=?').bind(v.name,v.tax_code,v.phone,v.region,v.address,v.status,now,entityId);
+ }else if(entity==='products'){
+  stmt=method==='POST'
+   ?env.DB.prepare('INSERT INTO products(id,name,category,origin,unit) VALUES(?,?,?,?,?)').bind(entityId,v.name,v.category,v.origin,v.unit)
+   :env.DB.prepare('UPDATE products SET name=?,category=?,origin=?,unit=? WHERE id=?').bind(v.name,v.category,v.origin,v.unit,entityId);
+ }else if(entity==='leads'){
+  const owner=method==='PATCH'?old.owner_email:user.email;
+  stmt=method==='POST'
+   ?env.DB.prepare('INSERT INTO leads(id,name,contact,owner_email,stage) VALUES(?,?,?,?,?)').bind(entityId,v.name,v.contact,owner,v.stage)
+   :env.DB.prepare('UPDATE leads SET name=?,contact=?,stage=?,updated_at=? WHERE id=?').bind(v.name,v.contact,v.stage,now,entityId);
+ }
+ const audit=env.DB.prepare('INSERT INTO audit_log(id,actor_email,action,entity,entity_id,before_json,after_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),user.email,method==='POST'?'CREATE':'UPDATE',entity,entityId,old?JSON.stringify(old):null,JSON.stringify(v));
+ try{
+  await env.DB.batch([stmt,audit]);
+  return response({ok:true,data:{id:entityId,...v},persisted:true},method==='POST'?201:200);
+ }catch(e){
+  console.error('D1 save failed',e?.name);
+  return bad('Không lưu được dữ liệu. Kiểm tra trùng mã số thuế và quyền truy cập.',409);
+ }
+}
 export default{
  async fetch(request,env){
   const url=new URL(request.url);
@@ -82,11 +139,13 @@ export default{
   try{
    assertConfig(env);
    const user=await identity(request,env);
-   if(request.method!=='GET')return bad('API V0.1 chỉ đọc: nghiệp vụ ghi dữ liệu chưa nghiệm thu',405);
-   if(url.pathname==='/api/me')return response({ok:true,user});
-   const match=url.pathname.match(/^\/api\/([a-z_]+)$/);
+   if(request.method==='GET'&&url.pathname==='/api/me')return response({ok:true,user});
+   const match=url.pathname.match(/^\/api\/([a-z_]+)(?:\/([a-zA-Z0-9_-]+))?$/);
    if(!match)return bad('Không tìm thấy API',404);
-   return await listEntity(env,user,match[1],url.searchParams);
+   const entity=match[1],id=match[2];
+   if(request.method==='GET'&&!id)return await listEntity(env,user,entity,url.searchParams);
+   if((request.method==='POST'&&!id)||(request.method==='PATCH'&&id))return await saveEntity(env,user,entity,request,request.method,id);
+   return bad('Phương thức không hỗ trợ',405);
   }catch(error){
    const status=Number(error?.status)||500;
    if(status===500)console.error('CRM API error',error?.name||'Error');
