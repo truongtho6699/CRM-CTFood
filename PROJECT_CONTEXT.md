@@ -324,3 +324,15 @@ Các thay đổi mã nguồn được đẩy lên GitHub sau khi kích hoạt Cl
 - `docs/GOOGLE_LOGIN_SETUP.md`: hướng dẫn Google Cloud OAuth Client ID, redirect URI chính thức và cấu hình Google Identity Provider trong Zero Trust.
 
 **Ràng buộc:** Cloudflare Access chặn truy cập **trước khi tải React**, nên nút Google cần xuất hiện trên chính màn hình Access sau khi Google IdP được bật. Nút trong React là màn hình dự phòng, không thay thế provider của Access. **Chưa thể tuyên bố đăng nhập Google hoạt động** khi chưa có OAuth Client ID/Secret và chưa test provider. Không thu thập hoặc commit Client Secret. Không đổi phạm vi bảo vệ tên miền để hiện nút.
+
+
+## 16. Google Identity Provider đã kích hoạt — 12/11/2026
+
+**Đã xác minh từ Cloudflare API:**
+- Google Identity Provider `Google - CT FOOD CRM` tồn tại, loại `google`, ID `75d9b1bc-44d7-4bcf-8b0d-1414d96fe790`.
+- Ứng dụng Access `CT FOOD CRM - Authorized Users` tại `crm-ctfood.pages.dev` đã được cập nhật `allowed_idps` gồm Google và phương thức Cloudflare dự phòng. Không bật tự động bỏ qua màn hình chọn danh tính.
+- Chính sách Access vẫn chỉ cho phép `truongtho53@gmail.com`, chưa mở cho email khác.
+- Pages production và preview đã bật `VITE_GOOGLE_OAUTH_ENABLED=true`, đồng thời giữ nguyên `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD` và binding D1.
+- Đã cập nhật giao diện dự phòng `AuthGateway.jsx` để nút Google hoạt động ở bản build mới. **Access là nơi xác thực OAuth**; frontend không xử lý Client Secret.
+
+**Chưa kiểm chứng:** Chưa thực hiện phiên đăng nhập Google tương tác từ trình duyệt và đối chiếu `/api/me` do chưa có phiên trình duyệt được kết nối. Trước khi nghiệm thu: mở cửa sổ ẩn danh → `https://crm-ctfood.pages.dev` → chọn Google → đăng nhập email quản trị → xác nhận D1 KẾT NỐI → thử dữ liệu giả lập. Cần kiểm tra bản build tương ứng đã chuyển sang trạng thái success trước khi công bố.
