@@ -7,9 +7,9 @@ workers_dev = false
 [[d1_databases]]
 binding = "DB"
 database_name = "ctfood-crm"
-database_id = "REPLACE_WITH_REAL_D1_DATABASE_ID"
+database_id = "31866ea2-8f55-4dcb-b504-58bb3f3059b9"
 migrations_dir = "migrations"
 
 # Cấu hình an toàn đặt bằng wrangler secret put, không ghi vào GitHub.
-# CF_ACCESS_TEAM_DOMAIN = ten-doi.cloudflar eaccess.com (bỏ khoảng trắng)
+# CF_ACCESS_TEAM_DOMAIN = company.cloudflareaccess.com (chỉ khi đã bật Access)
 # CF_ACCESS_AUD = Application Audience Tag trong Cloudflare Access
