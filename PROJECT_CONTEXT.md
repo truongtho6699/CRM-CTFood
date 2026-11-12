@@ -292,3 +292,19 @@ Trước khi sửa mã:
 - Không coi D1 được tạo và mã CRUD đã viết là chứng nhận toàn hệ thống đã sẵn sàng production.
 
 **Kiểm thử bắt buộc tiếp theo:** Đăng nhập `https://crm-ctfood.pages.dev` bằng tài khoản quản trị được cho phép; vào `Khách hàng`, nhập một bản ghi hoàn toàn giả lập, lưu, tải lại trang, kiểm tra dữ liệu còn tồn tại; đối chiếu bảng `customers` và `audit_log` trong D1. Nếu giao diện hiển thị `DEMO`, **không nhập dữ liệu thật** và kiểm tra lại Access/JWT/Pages API. Kiểm thử sản phẩm và khách tiềm năng tương tự.
+
+
+## 14. Cập nhật V0.2 — Kiểm soát trạng thái lưu D1 (12/11/2026)
+
+Các thay đổi mã nguồn được đẩy lên GitHub sau khi kích hoạt Cloudflare Access:
+
+- Giao diện không còn cho tạo/sửa/CSV ở ba danh mục D1 khi **API chưa xác thực**. Không được âm thầm ghi vào `localStorage` trong trường hợp kết nối D1 lỗi.
+- Biểu mẫu ghi rõ nút `Lưu lên D1` khi kết nối hợp lệ; các phân hệ còn ở giai đoạn demo ghi `Lưu dữ liệu mẫu`.
+- Bổ sung `Làm mới D1` và đọc danh sách phân trang nhiều đợt (tối đa 2.000 bản ghi/đợt tải hiện tại).
+- Nút tạo/sửa sản phẩm phản ánh quyền cơ bản của người dùng; API vẫn là nơi quyết định quyền cuối cùng.
+- API ghi D1 yêu cầu `Origin` khớp tên miền và `Content-Type: application/json` nhằm hạn chế ghi yêu cầu chéo nguồn.
+- Sửa `/api/health` phản ánh thực trạng JWT bắt buộc thay vì thông báo Access chưa được bật.
+- Bỏ hai trường `hạn mức nợ` và `số ngày được nợ` khỏi form live vì API chưa ghi chúng và chính sách tín dụng chưa chốt. Không được hứa hai trường đã được lưu.
+- Đã tạo checklist kiểm thử `docs/UAT_D1_V02.md` với 15 kịch bản chưa xác nhận.
+
+**Giới hạn còn tồn tại:** Chưa kiểm thử UI qua phiên đăng nhập thực: kết nối điều khiển trình duyệt Opera báo `Browser not connected`. Kiểm tra build Cloudflare có thể xác nhận giao diện biên dịch, nhưng **không thay thế thử nghiệm API GET/POST/PATCH qua Access từ trình duyệt được cấp quyền**. Phải hoàn thành UAT trước khi dùng dữ liệu khách hàng thật. Không nhập bản ghi thử vào danh mục kinh doanh nếu không có quy tắc nhận diện/xóa test và đối chiếu audit.
