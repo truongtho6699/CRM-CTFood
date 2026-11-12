@@ -270,3 +270,25 @@ Trước khi sửa mã:
 3. Hoàn thiện endpoints `POST/PATCH` có validation, phân quyền theo bản ghi, audit và giao dịch; kết nối giao diện để **lưu D1**.
 4. Kiểm tra smoke test trang chủ và `/api/health`, luồng tạo/đọc/sửa khách hàng và đơn hàng bằng dữ liệu thử.
 5. Chưa đưa dữ liệu thật vào D1 trước khi kiểm thử bảo mật, xác minh backup/restore và quy tắc nghiệp vụ.
+
+
+## 13. Cập nhật xác thực Access và lưu D1 — 12/11/2026
+
+**Đã xác minh qua Cloudflare API:**
+- Cloudflare Zero Trust organization đang hoạt động: `rapid-hill-8ea1.cloudflareaccess.com`.
+- Ứng dụng Access `CT FOOD CRM - Authorized Users` bảo vệ `crm-ctfood.pages.dev`. Chính sách ban đầu chỉ cho phép tài khoản quản trị Cloudflare đã xác minh; không mở truy cập cho toàn bộ Internet.
+- Đã cấu hình `CF_ACCESS_TEAM_DOMAIN` và `CF_ACCESS_AUD` vào Cloudflare Pages production/preview (AUD là định danh ứng dụng, không phải mật khẩu).
+- Đã thêm đúng **1 tài khoản ADMIN** trong bảng `app_users`. Không có dữ liệu khách hàng/sản phẩm/khách tiềm năng thật.
+- Đã tạo bảng `leads` trong D1 qua migration `0002_leads.sql`.
+- API trong `worker/src/index.js` hiện có **GET, POST, PATCH** đối với `customers`, `products`, `leads`, với kiểm tra JWT Access, quyền theo vai trò, dữ liệu đầu vào và ghi `audit_log`.
+- Đã kết nối ba phân hệ trên giao diện React với API cùng tên miền `/api`; nếu xác thực không thành công, giao diện báo rõ trạng thái DEMO và không tuyên bố dữ liệu đã lưu D1.
+- **Đã xác nhận Cloudflare Pages build và deploy thành công** đối với commit giao diện tích hợp D1 `b47a4c65d9032d58579b77ad7bdabb34468e0f7a`. Pages Functions `uses_functions = true`.
+- Đã xác nhận một nhà cung cấp đăng nhập loại `cloudflare` đang được cấu hình trong Zero Trust.
+
+**Chưa kiểm chứng / chưa nghiệm thu:**
+- Chưa có kiểm thử end-to-end từ phiên đăng nhập trình duyệt của người dùng: thêm khách, tải lại, xác nhận vẫn tồn tại D1, phân quyền và lịch sử audit.
+- Các phân hệ `orders`, `deliveries`, `payments`, `containers` vẫn **chưa có API ghi production**; giao diện các phần này vẫn DEMO (`localStorage`).
+- Chưa nhập dữ liệu thực; chưa thiết lập đầy đủ backup/restore và UAT tài chính.
+- Không coi D1 được tạo và mã CRUD đã viết là chứng nhận toàn hệ thống đã sẵn sàng production.
+
+**Kiểm thử bắt buộc tiếp theo:** Đăng nhập `https://crm-ctfood.pages.dev` bằng tài khoản quản trị được cho phép; vào `Khách hàng`, nhập một bản ghi hoàn toàn giả lập, lưu, tải lại trang, kiểm tra dữ liệu còn tồn tại; đối chiếu bảng `customers` và `audit_log` trong D1. Nếu giao diện hiển thị `DEMO`, **không nhập dữ liệu thật** và kiểm tra lại Access/JWT/Pages API. Kiểm thử sản phẩm và khách tiềm năng tương tự.
