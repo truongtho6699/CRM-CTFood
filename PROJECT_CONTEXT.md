@@ -308,3 +308,19 @@ Các thay đổi mã nguồn được đẩy lên GitHub sau khi kích hoạt Cl
 - Đã tạo checklist kiểm thử `docs/UAT_D1_V02.md` với 15 kịch bản chưa xác nhận.
 
 **Giới hạn còn tồn tại:** Chưa kiểm thử UI qua phiên đăng nhập thực: kết nối điều khiển trình duyệt Opera báo `Browser not connected`. Kiểm tra build Cloudflare có thể xác nhận giao diện biên dịch, nhưng **không thay thế thử nghiệm API GET/POST/PATCH qua Access từ trình duyệt được cấp quyền**. Phải hoàn thành UAT trước khi dùng dữ liệu khách hàng thật. Không nhập bản ghi thử vào danh mục kinh doanh nếu không có quy tắc nhận diện/xóa test và đối chiếu audit.
+
+
+## 15. Chuẩn bị tài khoản quản trị & nút Google Login (12/11/2026)
+
+**Đã xác nhận trên Cloudflare / D1:**
+- `truongtho53@gmail.com` tồn tại trong `app_users`, vai trò `ADMIN`, `active=1`, không tạo thêm tài khoản trùng lặp.
+- Cloudflare Access bảo vệ tên miền `crm-ctfood.pages.dev` và chỉ cho phép email quản trị trên.
+- Provider Access hiện có `cloudflare`; **chưa có nhà cung cấp danh tính Google OAuth**.
+
+**Đã thêm mã nguồn:**
+- `src/AuthGateway.jsx`: màn hình đăng nhập, nút **Đăng nhập bằng Google** (tạm khóa khi chưa cấu hình OAuth), lối đăng nhập Cloudflare Access hiện có; không dùng mật khẩu nội bộ.
+- `src/auth.css`: bố cục đăng nhập responsive.
+- `src/main.jsx`: khi chưa xác thực API, không hiển thị ứng dụng quản trị; sử dụng màn hình đăng nhập thay vì danh mục demo.
+- `docs/GOOGLE_LOGIN_SETUP.md`: hướng dẫn Google Cloud OAuth Client ID, redirect URI chính thức và cấu hình Google Identity Provider trong Zero Trust.
+
+**Ràng buộc:** Cloudflare Access chặn truy cập **trước khi tải React**, nên nút Google cần xuất hiện trên chính màn hình Access sau khi Google IdP được bật. Nút trong React là màn hình dự phòng, không thay thế provider của Access. **Chưa thể tuyên bố đăng nhập Google hoạt động** khi chưa có OAuth Client ID/Secret và chưa test provider. Không thu thập hoặc commit Client Secret. Không đổi phạm vi bảo vệ tên miền để hiện nút.
