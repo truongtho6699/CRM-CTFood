@@ -92,6 +92,9 @@ function validated(entity,payload){
 async function saveEntity(env,user,entity,request,method,id){
  if(!writable.has(entity))return bad('Chức năng lưu D1 của phân hệ này chưa nghiệm thu',405);
  if(!['ADMIN','BOD','SALES_MANAGER','SALES_ADMIN'].includes(user.role) && !(user.role==='SALES' && entity!=='products'))return bad('Không được phép cập nhật',403);
+ const origin=request.headers.get('Origin');
+ if(!origin||origin!==new URL(request.url).origin)return bad('Nguồn yêu cầu không hợp lệ',403);
+ if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type')||''))return bad('Yêu cầu Content-Type: application/json',415);
  const raw=await request.text();
  if(raw.length>15000)return bad('Dữ liệu quá lớn',413);
  let payload;try{payload=JSON.parse(raw)}catch{return bad('JSON không hợp lệ',400)}
