@@ -1,0 +1,15 @@
+name = "ctfood-crm-api"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = false
+
+# CẦN ĐIỀN SAU KHI TẠO DATABASE, KHÔNG PHẢI ID THẬT.
+[[d1_databases]]
+binding = "DB"
+database_name = "ctfood-crm"
+database_id = "REPLACE_WITH_REAL_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+# Cấu hình an toàn đặt bằng wrangler secret put, không ghi vào GitHub.
+# CF_ACCESS_TEAM_DOMAIN = ten-doi.cloudflar eaccess.com (bỏ khoảng trắng)
+# CF_ACCESS_AUD = Application Audience Tag trong Cloudflare Access
