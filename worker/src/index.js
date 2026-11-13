@@ -74,9 +74,10 @@ async function listEntity(env,user,entity,params){
   bind.push('%'+q.slice(0,80)+'%','%'+q.slice(0,80)+'%');
  }
  sql+=' ORDER BY '+(entity==='order_lines'?'l.id':entity==='deliveries'?'d.id':entity==='payments'?'p.id':'id')+' DESC LIMIT ? OFFSET ?';
- bind.push(limit,offset);
+ bind.push(limit+1,offset);
  const {results}=await env.DB.prepare(sql).bind(...bind).all();
- return response({ok:true,data:results||[],pagination:{limit,offset,hasMore:(results||[]).length===limit}});
+ const items=(results||[]);
+ return response({ok:true,data:items.slice(0,limit),pagination:{limit,offset,hasMore:items.length>limit}});
 }
 
 const writable=new Set(['customers','products','leads']);
