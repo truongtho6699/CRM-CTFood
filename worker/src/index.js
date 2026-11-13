@@ -68,8 +68,9 @@ async function listEntity(env,user,entity,params){
  if(!sql)return bad('Không hỗ trợ tài nguyên',404);
  const hasWhere=/\bWHERE\b/i.test(sql);
  const q=params.get('q')?.trim();
- if(q&&entity==='customers'){
-  sql+=(hasWhere?' AND ':' WHERE ')+'(name LIKE ? OR id LIKE ?)';
+ if(q&&['customers','products','leads'].includes(entity)){
+  const filter=entity==='leads'?'(name LIKE ? OR contact LIKE ?)':entity==='products'?'(name LIKE ? OR category LIKE ?)':'(name LIKE ? OR id LIKE ?)';
+  sql+=(hasWhere?' AND ':' WHERE ')+filter;
   bind.push('%'+q.slice(0,80)+'%','%'+q.slice(0,80)+'%');
  }
  sql+=' ORDER BY '+(entity==='order_lines'?'l.id':entity==='deliveries'?'d.id':entity==='payments'?'p.id':'id')+' DESC LIMIT ? OFFSET ?';
