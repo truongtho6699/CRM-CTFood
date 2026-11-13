@@ -336,3 +336,20 @@ Các thay đổi mã nguồn được đẩy lên GitHub sau khi kích hoạt Cl
 - Đã cập nhật giao diện dự phòng `AuthGateway.jsx` để nút Google hoạt động ở bản build mới. **Access là nơi xác thực OAuth**; frontend không xử lý Client Secret.
 
 **Chưa kiểm chứng:** Chưa thực hiện phiên đăng nhập Google tương tác từ trình duyệt và đối chiếu `/api/me` do chưa có phiên trình duyệt được kết nối. Trước khi nghiệm thu: mở cửa sổ ẩn danh → `https://crm-ctfood.pages.dev` → chọn Google → đăng nhập email quản trị → xác nhận D1 KẾT NỐI → thử dữ liệu giả lập. Cần kiểm tra bản build tương ứng đã chuyển sang trạng thái success trước khi công bố.
+
+ 
+## 17. CT FOOD CRM V0.4 — Hoàn thiện UI/UX và tách dữ liệu thật/demo (13/11/2026)
+
+Người dùng cho phép thực hiện điều chỉnh và tối ưu theo báo cáo hội đồng Agent / Skill Hub. Các thay đổi:
+
+- `src/main.jsx` chuyển thành điểm khởi chạy gọn; `src/CRMApp.jsx` và `src/crm-v04.css` là giao diện chính V0.4.
+- Dashboard V0.4 **KHÔNG tính hoặc hiển thị doanh thu, công nợ, KPI, sản lượng từ dữ liệu mẫu**. Chỉ hiển thị số bản ghi thật trong ba bảng `customers`, `leads`, `products`, lấy từ endpoint `GET /api/summary`; số đếm với role SALES lọc theo chủ sở hữu.
+- Menu chia rõ: tổng quan, khách hàng, khách tiềm năng, sản phẩm (đã có D1) và đơn hàng/giao nhận/thu tiền/KPI (chưa nghiệm thu, **chỉ đọc trang trạng thái, không có nút ghi demo**).
+- Danh sách D1 gọi từng trang **25 dòng**, tìm kiếm server-side theo tên/mã hoặc tên/thông tin tùy phân hệ, trạng thái tải/rỗng/lỗi; bảng hiển thị dạng thẻ trên điện thoại.
+- Modal có phản hồi lưu đang xử lý và lỗi inline; người phụ trách được lấy theo email đăng nhập, không nhập tự do; ghi nhận thành công khi API trả `persisted=true`, sau đó làm mới danh sách và tổng hợp.
+- Có điều hướng theo URL hash, đăng xuất, tương phản và vùng chạm tốt hơn; dùng CSS V0.4 riêng không nhập stylesheet demo.
+- Sửa màn đăng nhập dự phòng: nút thử kết nối lại và đăng nhập lại qua Cloudflare Access thay vì điều hướng về cùng trang gây lặp.
+- Đã tạo `docs/UIUX_V04_RELEASE.md` gồm 15 tiêu chí nghiệm thu.
+- **Không thay đổi dữ liệu nghiệp vụ D1, cấu hình Access, tài khoản, hệ thống KPI đang vận hành.**
+
+**Ràng buộc:** Một bản build/deploy chỉ chứng minh mã có thể xây và phát hành; chưa chứng minh thời gian tải trang thực tế, kết quả Google OAuth trên trình duyệt, tốc độ API sau xác thực hoặc chức năng tạo/sửa/tải lại dữ liệu D1. Những mục này cần tiếp tục kiểm thử trên môi trường đăng nhập được cấp quyền. Phân hệ giao dịch tài chính vẫn chưa được mở ghi production.
