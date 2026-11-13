@@ -143,6 +143,16 @@ export default{
    assertConfig(env);
    const user=await identity(request,env);
    if(request.method==='GET'&&url.pathname==='/api/me')return response({ok:true,user});
+   if(request.method==='GET'&&url.pathname==='/api/summary'){
+    const mine=user.role==='SALES';
+    const counts=await env.DB.batch([
+     (mine?env.DB.prepare('SELECT COUNT(*) AS n FROM customers WHERE owner_email=?').bind(user.email):env.DB.prepare('SELECT COUNT(*) AS n FROM customers')),
+     (mine?env.DB.prepare('SELECT COUNT(*) AS n FROM leads WHERE owner_email=?').bind(user.email):env.DB.prepare('SELECT COUNT(*) AS n FROM leads')),
+     env.DB.prepare('SELECT COUNT(*) AS n FROM products')
+    ]);
+    return response({ok:true,data:{customers:counts[0]?.results?.[0]?.n||0,leads:counts[1]?.results?.[0]?.n||0,products:counts[2]?.results?.[0]?.n||0},source:'D1'});
+   }
+
    const match=url.pathname.match(/^\/api\/([a-z_]+)(?:\/([a-zA-Z0-9_-]+))?$/);
    if(!match)return bad('Không tìm thấy API',404);
    const entity=match[1],id=match[2];
