@@ -1,7 +1,6 @@
 import React,{useEffect,useId,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {LayoutDashboard,Users,UserPlus,Package,ShoppingCart,Truck,Wallet,ChartColumn,Settings,Search,Plus,Download,RefreshCcw,Menu,X,AlertTriangle,Lock,Database,CheckCircle2,ChevronLeft,ChevronRight,LogOut,ArrowRight,Clock3,ShieldCheck,Info} from 'lucide-react';
-import './style.css';
 import './crm-v04.css';
 import {LoginPanel} from './AuthGateway.jsx';
 import {SCHEMAS} from './data.js';
@@ -137,7 +136,7 @@ function MasterList({entity,role,onSaved}){
   return toText(row[key])||'—';
  };
  return <section className="ct-workspace">
-  <div className="ct-section-head"><div><div className="ct-overline">DANH MỤC · CLOUDFARE D1</div><h2>{schema.title}</h2><p>Dữ liệu tập trung, phân quyền theo tài khoản. Không sử dụng bản ghi mẫu.</p></div>
+  <div className="ct-section-head"><div><div className="ct-overline">DANH MỤC · CLOUDFLARE D1</div><h2>{schema.title}</h2><p>Dữ liệu tập trung, phân quyền theo tài khoản. Không sử dụng bản ghi mẫu.</p></div>
    <div className="ct-actions"><button className="ct-btn secondary" disabled={loading} onClick={reload}><RefreshCcw size={17}/> Làm mới</button><button className="ct-btn secondary" disabled={loading||rows.length===0} onClick={()=>safeCSV(rows,entity)} title="Chỉ xuất trang dữ liệu đang hiển thị"><Download size={17}/> Xuất trang</button>{canWrite&&<button className="ct-btn primary" onClick={()=>setEditing(null)}><Plus size={17}/> Tạo mới</button>}</div>
   </div>
   {flash&&<Notice type="success">{flash}</Notice>}
