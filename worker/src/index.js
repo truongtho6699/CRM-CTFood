@@ -38,7 +38,7 @@ async function listEntity(env,user,entity,params){
  const offset=Math.max(0,Math.min(10000,Number(params.get('offset'))||0));
  let sql='',bind=[];
  if(entity==='customers'){
-  sql='SELECT id,name,tax_code,phone,email,address,region,owner_email,credit_limit,credit_days,status,created_at FROM customers';
+  sql=financeUser(user) ? 'SELECT id,name,tax_code,phone,email,address,region,owner_email,credit_limit,credit_days,status,created_at FROM customers' : 'SELECT id,name,tax_code,phone,email,address,region,owner_email,status,created_at FROM customers';
   if(salesFilter(user)){sql+=' WHERE owner_email=?';bind.push(user.email)}
  }else if(entity==='products')sql='SELECT id,name,category,origin,brand,unit,active FROM products';
  else if(entity==='orders'){
@@ -147,12 +147,14 @@ export default{
    if(request.method==='GET'&&url.pathname==='/api/me')return response({ok:true,user});
    if(request.method==='GET'&&url.pathname==='/api/summary'){
     const mine=user.role==='SALES';
-    const counts=await env.DB.batch([
-     (mine?env.DB.prepare('SELECT COUNT(*) AS n FROM customers WHERE owner_email=?').bind(user.email):env.DB.prepare('SELECT COUNT(*) AS n FROM customers')),
-     (mine?env.DB.prepare('SELECT COUNT(*) AS n FROM leads WHERE owner_email=?').bind(user.email):env.DB.prepare('SELECT COUNT(*) AS n FROM leads')),
-     env.DB.prepare('SELECT COUNT(*) AS n FROM products')
-    ]);
-    return response({ok:true,data:{customers:counts[0]?.results?.[0]?.n||0,leads:counts[1]?.results?.[0]?.n||0,products:counts[2]?.results?.[0]?.n||0},source:'D1'});
+    const canLeads=access.leads.includes(user.role);
+    const queries=[
+      mine?env.DB.prepare('SELECT COUNT(*) AS n FROM customers WHERE owner_email=?').bind(user.email):env.DB.prepare('SELECT COUNT(*) AS n FROM customers'),
+      canLeads?(mine?env.DB.prepare('SELECT COUNT(*) AS n FROM leads WHERE owner_email=?').bind(user.email):env.DB.prepare('SELECT COUNT(*) AS n FROM leads')):env.DB.prepare('SELECT NULL AS n'),
+      env.DB.prepare('SELECT COUNT(*) AS n FROM products')
+    ];
+    const counts=await env.DB.batch(queries);
+    return response({ok:true,data:{customers:counts[0]?.results?.[0]?.n??0,leads:canLeads?(counts[1]?.results?.[0]?.n??0):null,products:counts[2]?.results?.[0]?.n??0},source:'D1'});
    }
 
    const match=url.pathname.match(/^\/api\/([a-z_]+)(?:\/([a-zA-Z0-9_-]+))?$/);
