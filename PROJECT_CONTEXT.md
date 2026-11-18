@@ -385,3 +385,12 @@ Người dùng cho phép thực hiện điều chỉnh và tối ưu theo báo c
 **D1 Production không bị ghi dữ liệu thử:** kiểm tra `customers=0`, `leads=0`, `products=0`, `audit_log=0` trong đợt này.
 
 **Cần kiểm chứng tiếp:** (1) Google OAuth đăng nhập thực bằng ADMIN; (2) POST/PATCH qua Cloudflare Access JWT và nhật ký audit; (3) tách quyền qua phiên SALES/LOGISTICS/ACCOUNTING thực tế; (4) thời gian tải trên điện thoại và Web Vitals. Không coi test in-memory là xác nhận API runtime đã nghiệm thu.
+
+
+## 20. Bổ sung kiểm thử từ chối truy cập chưa đăng nhập — 18/11/2026
+
+- Đã thêm `tests/access-api.test.mjs` dùng `node:test` và gọi trực tiếp `worker.fetch` với yêu cầu giả lập, **không cấp JWT hợp lệ**, không kết nối D1 Production. Kiểm tra API từ chối đọc hồ sơ, đọc khách hàng, POST khách hàng, OPTIONS/CORS và đường dẫn ngoài API.
+- **GitHub Actions đã chạy thật và thành công**, run `44252689070`, commit `f7f7a71e28e3f23b4f5367e8d1946c905de9ff2d`. https://github.com/truongtho6699/CRM-CTFood/actions/runs/44252689070
+- Các lần CI `44252433570` và `44252635127` cũng thành công. GitHub kiểm thử schema và build trước khi Cloudflare phát hành.
+- Kiểm tra trực tiếp màn Cloudflare Access bằng Opera trước đó xác nhận có lựa chọn Google, nhưng **chưa đăng nhập Google bằng tài khoản ADMIN**, không có kết quả POST/PATCH qua ứng dụng từ phiên đăng nhập thật.
+- Tiếp tục không tự nhập khách hàng hoặc giao dịch thật; không mở ghi đơn hàng, giao nhận và thanh toán.
