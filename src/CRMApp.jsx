@@ -41,7 +41,7 @@ function safeCSV(data,label){
 }
 function Status({value}){
  const v=toText(value)||'Chưa xác định';
- const kind=/ngừng|không phù hợp|hủy/i.test(v)?'bad':/đang giao dịch|chuyển đổi|hoàn/i.test(v)?'good':'neutral';
+ const kind=/ngừng|INACTIVE|không phù hợp|hủy/i.test(v)?'bad':/đang giao dịch|ACTIVE|chuyển đổi|hoàn/i.test(v)?'good':'neutral';
  return <span className={'ct-tag '+kind}><span className="ct-tag-dot"/>{v}</span>;
 }
 function Notice({type='info',children}){
@@ -49,17 +49,28 @@ function Notice({type='info',children}){
 }
 function Modal({entity,initial,onCancel,onSave}){
  const schema=SCHEMAS[entity];
- const [form,setForm]=useState(initial?{...initial}:{});
+ const [form,setForm]=useState(initial?{...initial,tax:initial.tax_code??initial.tax??'',group:initial.category??initial.group??'',status:initial.status==='ACTIVE'?'Đang giao dịch':initial.status==='INACTIVE'?'Ngừng giao dịch':initial.status==='PROSPECT'?'Tiềm năng':initial.status}:{});
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const heading=useId();
  const closeRef=useRef(null);
+ const dialogRef=useRef(null);
+ const priorFocus=useRef(null);
  const editing=Boolean(initial);
  useEffect(()=>{
+  priorFocus.current=document.activeElement;
   closeRef.current?.focus();
-  const onKey=e=>{if(e.key==='Escape'&&!busy)onCancel()};
+  const onKey=e=>{
+   if(e.key==='Escape'&&!busy){e.preventDefault();onCancel();return}
+   if(e.key!=='Tab')return;
+   const focusable=[...(dialogRef.current?.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),[href]')||[])];
+   if(!focusable.length)return;
+   const first=focusable[0],last=focusable[focusable.length-1];
+   if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+  };
   document.addEventListener('keydown',onKey);
-  return()=>document.removeEventListener('keydown',onKey);
+  return()=>{document.removeEventListener('keydown',onKey);priorFocus.current?.focus?.()};
  },[onCancel,busy]);
  const fields=schema.fields.filter(([key])=>key!=='owner');
  const submit=async e=>{
@@ -68,7 +79,7 @@ function Modal({entity,initial,onCancel,onSave}){
   try{await onSave(form,initial)}catch(ex){setError(ex.message||'Không lưu được dữ liệu. Vui lòng thử lại.');setBusy(false)}
  };
  return <div className="backdrop ct-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onCancel()}}>
-  <section className="modal ct-modal" role="dialog" aria-modal="true" aria-labelledby={heading}>
+  <section ref={dialogRef} className="modal ct-modal" role="dialog" aria-modal="true" aria-labelledby={heading}>
    <div className="ct-modal-title"><div><div className="ct-overline">LƯU VÀO CLOUDFLARE D1</div><h2 id={heading}>{editing?'Cập nhật':'Thêm mới'} {schema.title.toLowerCase()}</h2></div><button className="ct-icon-button" type="button" ref={closeRef} disabled={busy} onClick={onCancel} aria-label="Đóng biểu mẫu"><X size={20}/></button></div>
    <form onSubmit={submit}>
     <div className="formgrid ct-formgrid">{fields.map(([key,label,kind])=>{
@@ -131,7 +142,7 @@ function MasterList({entity,role,onSaved}){
  const cell=(row,key)=>{
   if(key==='tax')return toText(row.tax_code||row.tax)||'—';
   if(key==='group')return toText(row.category||row.group)||'—';
-  if(key==='status'||key==='stage')return <Status value={row[key]}/>;
+  if(key==='status'||key==='stage')return <Status value={key==='status'?({'ACTIVE':'Đang giao dịch','INACTIVE':'Ngừng giao dịch','PROSPECT':'Tiềm năng'}[row[key]]||row[key]):row[key]}/>;
   if(key==='id')return <span className="ct-id">{toText(row.id).slice(0,8)}</span>;
   return toText(row[key])||'—';
  };
@@ -162,10 +173,10 @@ function Dashboard({summary,loading,error,onRetry,onNavigate,updatedAt}){
   {error&&<Notice type="error">Không thể xác nhận số liệu D1: {error}. Không hiển thị dữ liệu cũ như dữ liệu mới.</Notice>}
   <div className="ct-kpis">{cards.map(({name,value,icon:Icon,to,detail})=><button type="button" className="ct-kpi" key={to} onClick={()=>onNavigate(to)}>
    <div className="ct-kpi-top"><span>{name}</span><span className="ct-kpi-icon"><Icon size={20}/></span></div>
-   <div className="ct-kpi-value">{loading?'…':error?'—':Number(value??0).toLocaleString('vi-VN')}</div><div className="ct-kpi-detail">{detail} <ArrowRight size={15}/></div>
+   <div className="ct-kpi-value">{loading?'…':error||summary===null?'—':Number(value??0).toLocaleString('vi-VN')}</div><div className="ct-kpi-detail">{detail} <ArrowRight size={15}/></div>
   </button>)}</div>
   <div className="ct-dashboard-grid"><section className="ct-panel"><div className="ct-panel-title"><div><h3>Tình trạng dữ liệu</h3><p>Thông tin hệ thống thực, không dùng số liệu minh họa</p></div><ShieldCheck size={22}/></div>
-   <div className="ct-status-list"><div><span>Đăng nhập</span><Status value="Đang hoạt động"/></div><div><span>Khách hàng · Khách tiềm năng · Sản phẩm</span><Status value={error?'Cần kiểm tra':'Đang giao dịch'}/></div><div><span>Nguồn tổng hợp</span><strong>Cloudflare D1</strong></div><div><span>Cập nhật gần nhất</span><strong>{updatedAt?new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'medium'}).format(updatedAt):'Chưa có'}</strong></div></div>
+   <div className="ct-status-list"><div><span>Đăng nhập</span><Status value="Đang hoạt động"/></div><div><span>Khách hàng · Khách tiềm năng · Sản phẩm</span><Status value={error?'Cần kiểm tra':'Đã kết nối'}/></div><div><span>Nguồn tổng hợp</span><strong>Cloudflare D1</strong></div><div><span>Cập nhật gần nhất</span><strong>{updatedAt?new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'medium'}).format(updatedAt):'Chưa có'}</strong></div></div>
   </section><section className="ct-panel"><div className="ct-panel-title"><div><h3>Các phân hệ tiếp theo</h3><p>Chưa mở vận hành, chờ kiểm thử nghiệp vụ</p></div><Clock3 size={22}/></div>
    <div className="ct-next-list">{LOCKED.map(item=><div key={item.id}><Lock size={16}/><span>{item.name}</span><span className="ct-next-tag">Chưa nghiệm thu</span></div>)}</div>
   </section></div>
