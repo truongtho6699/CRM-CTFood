@@ -171,7 +171,7 @@ function Dashboard({summary,loading,error,onRetry,onNavigate,updatedAt}){
   {name:'Khách hàng',value:summary?.customers,icon:Users,to:'customers',detail:'Bản ghi khách hàng từ D1'},
   {name:'Khách tiềm năng',value:summary?.leads,icon:UserPlus,to:'leads',detail:'Khách cần tiếp cận từ D1'},
   {name:'Sản phẩm',value:summary?.products,icon:Package,to:'products',detail:'Danh mục sản phẩm từ D1'}
- ];
+ ].filter(card=>card.value!==null);
  return <div className="ct-dashboard">
   <div className="ct-dashboard-title"><div><div className="ct-overline">TỔNG QUAN DỮ LIỆU THẬT</div><h2>Hoạt động CT FOOD</h2><p>Chỉ tổng hợp các danh mục đã kết nối và được xác thực trên Cloudflare D1.</p></div><button className="ct-btn secondary" onClick={onRetry}><RefreshCcw size={17}/> Làm mới</button></div>
   {error&&<Notice type="error">Không thể xác nhận số liệu D1: {error}. Không hiển thị dữ liệu cũ như dữ liệu mới.</Notice>}
@@ -221,12 +221,14 @@ function CRMApp(){
  },[]);
  useEffect(()=>{if(auth.status==='online')loadSummary()},[auth.status]);
  if(auth.status!=='online')return <LoginPanel error={auth.error} loading={auth.status==='loading'} onRetry={authenticate}/>;
- const current=[...NAV,...LOCKED].find(x=>x.id===route)||NAV[0];
+ const permittedNav=NAV.filter(item=>item.id!=='leads'||auth.user.role!=='LOGISTICS');
+ const current=[...permittedNav,...LOCKED].find(x=>x.id===route)||permittedNav[0];
+ const selectedPage=route==='leads'&&auth.user.role==='LOGISTICS'?'dashboard':route;
  const Icon=current.icon;
  return <div className="ct-shell">
   <aside className={'ct-sidebar '+(drawer?'open':'')} aria-label="Điều hướng chính">
    <div className="ct-brand"><span className="ct-logo">CT</span><div><strong>CT FOOD</strong><small>CRM MANAGEMENT</small></div><button className="ct-icon-button ct-mobile-close" onClick={()=>setDrawer(false)} aria-label="Đóng menu"><X size={19}/></button></div>
-   <nav className="ct-nav"><div className="ct-nav-label">DỮ LIỆU ĐÃ KẾT NỐI</div>{NAV.map(item=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(route===item.id?'active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{item.id==='dashboard'&&<span className="ct-nav-arrow">●</span>}</button>})}
+   <nav className="ct-nav"><div className="ct-nav-label">DỮ LIỆU ĐÃ KẾT NỐI</div>{permittedNav.map(item=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(route===item.id?'active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{item.id==='dashboard'&&<span className="ct-nav-arrow">●</span>}</button>})}
     <div className="ct-nav-label ct-nav-label-next">CHƯA NGHIỆM THU</div>{LOCKED.map(item=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item pending '+(route===item.id?'active':'')} onClick={()=>changePage(item.id)}><ItemIcon size={19}/><span>{item.name}</span><Lock size={14}/></button>})}</nav>
    <div className="ct-sidebar-footer"><span className="ct-online-dot"/> CT FOOD V0.4 · D1</div>
   </aside>
@@ -234,9 +236,9 @@ function CRMApp(){
   <div className="ct-main">
    <header className="ct-header"><div className="ct-header-left"><button className="ct-icon-button ct-menu-button" onClick={()=>setDrawer(true)} aria-label="Mở menu"><Menu size={22}/></button><div className="ct-breadcrumb"><small>CT FOOD / {current.name}</small><h1><Icon size={20}/>{current.name}</h1></div></div><div className="ct-header-right"><span className="ct-connected"><span/> D1 ĐANG KẾT NỐI</span><div className="ct-user"><strong>{auth.user.full_name||'Người dùng CRM'}</strong><small>{auth.user.role}</small></div><a className="ct-logout" href="/cdn-cgi/access/logout" title="Đăng xuất Cloudflare Access" aria-label="Đăng xuất"><LogOut size={19}/></a></div></header>
    <main className="ct-content"><div className="ct-live-info"><ShieldCheck size={16}/><span>Dữ liệu danh mục từ D1 · Đăng nhập: {auth.user.email} · Đơn hàng, giao nhận và công nợ chưa mở ghi thực tế</span></div>
-    {route==='dashboard'?<Dashboard summary={summary} loading={stats.loading} error={stats.error} onRetry={loadSummary} onNavigate={changePage} updatedAt={updatedAt}/>
-     :LIVE.includes(route)?<MasterList key={route} entity={route} role={auth.user.role} onSaved={loadSummary}/>
-     :<Pending page={route}/>}
+    {selectedPage==='dashboard'?<Dashboard summary={summary} loading={stats.loading} error={stats.error} onRetry={loadSummary} onNavigate={changePage} updatedAt={updatedAt}/>
+     :LIVE.includes(selectedPage)?<MasterList key={selectedPage} entity={selectedPage} role={auth.user.role} onSaved={loadSummary}/>
+     :<Pending page={selectedPage}/>}
     <footer className="ct-footer">CT FOOD CRM V0.4 · Dữ liệu D1 có xác thực · Chưa nghiệm thu các phân hệ tài chính</footer>
    </main>
   </div>
