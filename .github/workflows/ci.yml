@@ -1,0 +1,23 @@
+name: CRM build and schema tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run isolated D1 regression tests
+        run: npm test
+      - name: Build CRM frontend and Pages Functions dependencies
+        run: npm run build
