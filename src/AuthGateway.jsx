@@ -9,7 +9,7 @@ import './auth.css';
  * backend authentication, password hashing, sessions and lockout exist.
  */
 const googleConfigured=import.meta.env.VITE_GOOGLE_OAUTH_ENABLED==='true';
-const REAUTH='/cdn-cgi/access/logout?returnTo='+encodeURIComponent('https://crm-ctfood.pages.dev/');
+const REAUTH='https://crm-ctfood.pages.dev/cdn-cgi/access/logout?returnTo='+encodeURIComponent('https://crm-ctfood.pages.dev/');
 export function LoginPanel({error='',loading=false,onRetry}){
  const [method,setMethod]=useState('google');
  const [visible,setVisible]=useState(false);
@@ -31,7 +31,7 @@ export function LoginPanel({error='',loading=false,onRetry}){
     </div>
     {method==='google'?<div role="tabpanel" className="ct-login-panel">
      <p className="ct-auth-label">Đăng nhập bằng tài khoản đã được cấp quyền</p>
-     <a className="ct-auth-google ct-auth-google-action" href={REAUTH}><span className="ct-google-logo" aria-hidden="true">G</span> Tiếp tục với Google</a>
+     <a className="ct-auth-google ct-auth-google-action" href={REAUTH}><span className="ct-google-logo" aria-hidden="true">G</span> Tiếp tục với Google qua Access</a>
      <p className="ct-login-helper">{googleConfigured?'Bạn sẽ được chuyển tới Cloudflare Access để chọn Google và xác minh tài khoản.':'Lựa chọn Google cần được kích hoạt trong cấu hình Cloudflare Access.'}</p>
      <div className="ct-login-security"><ShieldCheck size={17}/> Quyền truy cập được kiểm tra lại tại Cloudflare Access và D1.</div>
     </div>:<div role="tabpanel" className="ct-login-panel">
