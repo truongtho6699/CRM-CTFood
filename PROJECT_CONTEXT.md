@@ -367,3 +367,21 @@ Người dùng cho phép thực hiện điều chỉnh và tối ưu theo báo c
 **Chưa nghiệm thu:** Không tự thao tác đăng nhập Google thay tài khoản người dùng; chưa có phiên đăng nhập D1 đã xác thực để chạy POST/PATCH và kiểm tra audit qua UI. Chưa có đo LCP/INP/CLS thực tế, mobile screenshots hoặc test thiết bị thật. Không đánh dấu đạt các mục này cho đến khi có bằng chứng.
 
 **Ưu tiên tiếp:** tài khoản ADMIN đăng nhập Google → giao diện V0.4 → tạo **bản ghi thử giả lập có tiền tố UAT** → đọc lại sau reload → kiểm tra audit D1; thử trên điện thoại; cân nhắc xóa mẫu thử dưới quy trình UAT kiểm soát. Không mở API tài chính trước khi chốt quy trình.
+
+
+## 19. Kiểm thử hồi quy và kiểm soát quyền API — 18/11/2026
+
+**Đã thực hiện:**
+- API `GET /api/customers` chỉ trả `credit_limit` và `credit_days` cho các vai trò tài chính được định nghĩa qua `financeUser`; SALES và LOGISTICS không nhận được hai trường này.
+- `GET /api/summary` không tiết lộ tổng số lead cho vai trò LOGISTICS không có quyền đọc `leads` (trả `null` cho `leads`); giao diện ẩn mục Lead khỏi menu và Dashboard của Logistics.
+- Thêm bộ kiểm thử schema tại `tests/schema.test.mjs`. Kiểm thử **trên SQLite tạm trong bộ nhớ**, không kết nối D1 Cloudflare thật. Nội dung: migration 0001+0002 tạo đủ 12 bảng; chống trùng mã số thuế; ràng buộc người phụ trách; ràng buộc khối lượng và đơn giá.
+- Cập nhật `package.json` có `npm test`.
+- Thêm GitHub Actions `.github/workflows/ci.yml` chạy mỗi lần push vào `main` và Pull Request: cài dependencies, `npm test`, `npm run build`.
+
+**Bằng chứng kiểm thử đã chạy thành công:**
+- GitHub Actions `CRM build and schema tests` run `44252433570`, commit `5c1fd63c28c75b392baf8e6dfc207c865758c937`, kết quả **completed/success**. Hai bước `Run isolated D1 regression tests` và `Build CRM frontend and Pages Functions dependencies` đều **success**.
+- Xem trực tiếp: https://github.com/truongtho6699/CRM-CTFood/actions/runs/44252433570
+
+**D1 Production không bị ghi dữ liệu thử:** kiểm tra `customers=0`, `leads=0`, `products=0`, `audit_log=0` trong đợt này.
+
+**Cần kiểm chứng tiếp:** (1) Google OAuth đăng nhập thực bằng ADMIN; (2) POST/PATCH qua Cloudflare Access JWT và nhật ký audit; (3) tách quyền qua phiên SALES/LOGISTICS/ACCOUNTING thực tế; (4) thời gian tải trên điện thoại và Web Vitals. Không coi test in-memory là xác nhận API runtime đã nghiệm thu.
