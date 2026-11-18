@@ -56,12 +56,16 @@ function Modal({entity,initial,onCancel,onSave}){
  const closeRef=useRef(null);
  const dialogRef=useRef(null);
  const priorFocus=useRef(null);
+ const cancelRef=useRef(onCancel);
+ const busyRef=useRef(busy);
+ cancelRef.current=onCancel;
+ busyRef.current=busy;
  const editing=Boolean(initial);
  useEffect(()=>{
   priorFocus.current=document.activeElement;
   closeRef.current?.focus();
   const onKey=e=>{
-   if(e.key==='Escape'&&!busy){e.preventDefault();onCancel();return}
+   if(e.key==='Escape'&&!busyRef.current){e.preventDefault();cancelRef.current();return}
    if(e.key!=='Tab')return;
    const focusable=[...(dialogRef.current?.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),[href]')||[])];
    if(!focusable.length)return;
@@ -71,7 +75,7 @@ function Modal({entity,initial,onCancel,onSave}){
   };
   document.addEventListener('keydown',onKey);
   return()=>{document.removeEventListener('keydown',onKey);priorFocus.current?.focus?.()};
- },[onCancel,busy]);
+ },[]);
  const fields=schema.fields.filter(([key])=>key!=='owner');
  const submit=async e=>{
   e.preventDefault();if(busy)return;
