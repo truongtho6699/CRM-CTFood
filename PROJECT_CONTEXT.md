@@ -353,3 +353,17 @@ Người dùng cho phép thực hiện điều chỉnh và tối ưu theo báo c
 - **Không thay đổi dữ liệu nghiệp vụ D1, cấu hình Access, tài khoản, hệ thống KPI đang vận hành.**
 
 **Ràng buộc:** Một bản build/deploy chỉ chứng minh mã có thể xây và phát hành; chưa chứng minh thời gian tải trang thực tế, kết quả Google OAuth trên trình duyệt, tốc độ API sau xác thực hoặc chức năng tạo/sửa/tải lại dữ liệu D1. Những mục này cần tiếp tục kiểm thử trên môi trường đăng nhập được cấp quyền. Phân hệ giao dịch tài chính vẫn chưa được mở ghi production.
+
+ 
+## 18. Rà soát sau V0.4 — Trạng thái nghiệm thu (18/11/2026)
+
+**Đã thực hiện và có bằng chứng:**
+- Cloudflare Pages production: commit `9c863d2c641ee3b9ae6d3e0ccc918b73aa09034b` đã được triển khai thành công khi bắt đầu đợt kiểm tra. Đây là V0.4 có trang Dashboard D1, menu phân hệ chưa nghiệm thu, phân trang chính xác.
+- Qua Opera Browser Connector, mở `https://crm-ctfood.pages.dev` và được chuyển đến màn hình Cloudflare Access. Cây trợ năng xác nhận có **Google · Google - CT FOOD CRM** cùng phương thức Cloudflare. Đây là bằng chứng đã **hiển thị lựa chọn Google**, không phải bằng chứng đã đăng nhập thành công.
+- Rà soát mã nguồn `src/CRMApp.jsx`, sửa khi mở màn hình chỉnh sửa: ánh xạ `category → group` (Sản phẩm), `tax_code → tax` và chuẩn hóa `ACTIVE/INACTIVE/PROSPECT` để biểu mẫu không để trống giá trị cũ; xử lý focus bàn phím trong modal ổn định hơn.
+- Kiểm tra D1 trực tiếp bằng truy vấn **chỉ đọc**: có 1 tài khoản, các bảng `customers`, `leads`, `products`, `audit_log` đều 0 bản ghi. Không thêm khách hàng giả lập lên dữ liệu production.
+- Các sửa UI vừa nêu ở commit `f78bdead285b99964dac37849db0416d64d8069e` đã đẩy lên GitHub. Kiểm tra Cloudflare build mới nhất trước khi công bố release.
+
+**Chưa nghiệm thu:** Không tự thao tác đăng nhập Google thay tài khoản người dùng; chưa có phiên đăng nhập D1 đã xác thực để chạy POST/PATCH và kiểm tra audit qua UI. Chưa có đo LCP/INP/CLS thực tế, mobile screenshots hoặc test thiết bị thật. Không đánh dấu đạt các mục này cho đến khi có bằng chứng.
+
+**Ưu tiên tiếp:** tài khoản ADMIN đăng nhập Google → giao diện V0.4 → tạo **bản ghi thử giả lập có tiền tố UAT** → đọc lại sau reload → kiểm tra audit D1; thử trên điện thoại; cân nhắc xóa mẫu thử dưới quy trình UAT kiểm soát. Không mở API tài chính trước khi chốt quy trình.
