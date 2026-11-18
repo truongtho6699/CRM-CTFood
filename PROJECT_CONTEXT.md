@@ -394,3 +394,18 @@ Người dùng cho phép thực hiện điều chỉnh và tối ưu theo báo c
 - Các lần CI `44252433570` và `44252635127` cũng thành công. GitHub kiểm thử schema và build trước khi Cloudflare phát hành.
 - Kiểm tra trực tiếp màn Cloudflare Access bằng Opera trước đó xác nhận có lựa chọn Google, nhưng **chưa đăng nhập Google bằng tài khoản ADMIN**, không có kết quả POST/PATCH qua ứng dụng từ phiên đăng nhập thật.
 - Tiếp tục không tự nhập khách hàng hoặc giao dịch thật; không mở ghi đơn hàng, giao nhận và thanh toán.
+
+
+## 21. Màn đăng nhập 2 lựa chọn — 18/11/2026
+
+Yêu cầu: màn hình đăng nhập CT FOOD có **tên đăng nhập / mật khẩu** hoặc **tài khoản Google**.
+
+**Đã triển khai:**
+- `src/AuthGateway.jsx`, `src/auth.css`: giao diện hai cột theo thương hiệu CT FOOD, hai tab `Tài khoản Google` và `Tên đăng nhập / mật khẩu`, responsive cho điện thoại.
+- Tab Google dẫn về tên miền production bảo vệ bởi Cloudflare Access để chọn Google, dùng provider Google đã cấu hình.
+- Tab user/password có hai trường giao diện và nút hiển thị mật khẩu, **nhưng chức năng bị vô hiệu hóa có chủ đích**. Chưa có backend mật khẩu, không đặt mật khẩu mặc định, không lưu mật khẩu plaintext hay đưa secrets lên GitHub.
+- Đã xác minh cây UI tại URL preview của Pages có đủ hai tab và liên kết Google (chưa đăng nhập thực, không kết luận Google callback đã đạt). Hướng dẫn kiến trúc và các điều kiện bảo mật ở `docs/AUTH_DUAL_METHOD.md`.
+
+**Giới hạn quan trọng:** Cloudflare Access đang bảo vệ toàn bộ tên miền `crm-ctfood.pages.dev` ở lớp ngoài trước khi trình duyệt nhận React. Người chưa đăng nhập sẽ thấy giao diện Cloudflare Access, **không thấy giao diện React tùy chỉnh ngay**. Không tự tháo lớp bảo vệ để làm hiện biểu mẫu. Để username/password hoạt động thực tế, cần chọn nhà cung cấp định danh hỗ trợ mật khẩu hoặc triển khai hệ thống xác thực riêng được bảo vệ. Sau đó phải UAT an toàn, giới hạn thử sai, cookie bảo mật, thu hồi phiên và reset mật khẩu.
+
+**Không thay đổi:** dữ liệu D1, chính sách Access, quyền ADMIN, tích hợp KPI và các chức năng tài chính chưa nghiệm thu.
