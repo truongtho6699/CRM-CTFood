@@ -9,7 +9,7 @@ import './auth.css';
  * backend authentication, password hashing, sessions and lockout exist.
  */
 const googleConfigured=import.meta.env.VITE_GOOGLE_OAUTH_ENABLED==='true';
-const REAUTH='https://crm-ctfood.pages.dev/cdn-cgi/access/logout?returnTo='+encodeURIComponent('https://crm-ctfood.pages.dev/');
+const REAUTH='https://crm-ctfood.pages.dev/cdn-cgi/access/logout?returnTo='+encodeURIComponent('https://crm-ctfood.pages.dev/login');
 export function LoginPanel({error='',loading=false,onRetry}){
  const [method,setMethod]=useState('google');
  const [visible,setVisible]=useState(false);
