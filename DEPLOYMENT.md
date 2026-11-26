@@ -19,7 +19,7 @@ Migration `0003_status_codes_versioning.sql` chuẩn hóa trạng thái khách h
 2. Chọn repository `truongtho6699/CRM-CTFood`.
 3. Framework preset: Vite, Build command: `npm run build`, Build output directory: `dist`.
 4. Để **Preview** trước; không gắn tên miền production hay tải dữ liệu thật.
-5. Đây là frontend DEMO dùng localStorage. **Không sử dụng để quản trị khách hàng thực** vì dữ liệu lưu trên máy người dùng, không đồng bộ và không có xác thực.
+5. (Lịch sử V0.1) Bản đầu dùng localStorage; từ V0.2 giao diện chỉ đọc/ghi qua API + D1 có Access. Mọi nhánh preview `*.crm-ctfood.pages.dev` đều nằm trong ứng dụng Access "CT FOOD CRM - Authorized Users" (đã kiểm tra 26/11/2026).
 
 ## 3. Backend Cloudflare Worker + D1 (giai đoạn kế tiếp)
 
@@ -47,4 +47,4 @@ Migration `0003_status_codes_versioning.sql` chuẩn hóa trạng thái khách h
 
 ## 5. Các điều kiện kỹ thuật phải hoàn tất
 
-Chế độ DEMO frontend và API Worker là **hai khối độc lập** ở V0.1. API mới có các tài nguyên đọc an toàn, chưa tích hợp vào form của giao diện. Các quy trình tạo đơn nhiều dòng, xác nhận giao, tính công nợ chuẩn, phân bổ thu tiền, giá vốn và KPI phải hoàn thiện và kiểm thử ở các đợt tiếp theo. Không coi mã nguồn V0.1 là ERP hoặc phần mềm kế toán hoàn chỉnh.
+Từ V0.2, giao diện và API đã nối với nhau cho 3 danh mục Khách hàng, Khách tiềm năng, Sản phẩm (đọc/ghi D1, có audit). Các phân hệ còn lại chỉ có API đọc và đang khóa trên giao diện. Các quy trình tạo đơn nhiều dòng, xác nhận giao, tính công nợ chuẩn, phân bổ thu tiền, giá vốn và KPI phải hoàn thiện và kiểm thử ở các đợt tiếp theo. Không coi mã nguồn V0.1 là ERP hoặc phần mềm kế toán hoàn chỉnh.

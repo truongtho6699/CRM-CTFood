@@ -37,7 +37,14 @@ test('cleanup xoá sạch dữ liệu mẫu (kể cả nhật ký sửa) và gi�
   db.exec(seed);
   db.prepare("INSERT INTO audit_log(id,actor_email,action,entity,entity_id) VALUES('a1','truongtho53@gmail.com','UPDATE','customers','DEMO-KH01')").run();
   db.prepare("INSERT INTO audit_log(id,actor_email,action,entity,entity_id) VALUES('a2','truongtho53@gmail.com','UPDATE','customers','real-uuid-1')").run();
+  // Bản ghi UAT tạo trên giao diện (mã UUID, tên bắt đầu [DEMO]) và một khách thật có chữ [DEMO] ở giữa tên.
+  db.exec("INSERT INTO customers(id,name,owner_email,status) SELECT 'uuid-uat','[DEMO] UAT KH 001',email,'PROSPECT' FROM app_users WHERE role='ADMIN'");
+  db.exec("INSERT INTO audit_log(id,actor_email,action,entity,entity_id) SELECT 'a3',email,'CREATE','customers','uuid-uat' FROM app_users WHERE role='ADMIN'");
+  db.exec("INSERT INTO customers(id,name,owner_email,status) SELECT 'uuid-real2','Khách có chữ [DEMO] ở giữa',email,'ACTIVE' FROM app_users WHERE role='ADMIN'");
   db.exec(cleanup);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM customers WHERE id='uuid-uat'"),0);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM audit_log WHERE id='a3'"),0);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM customers WHERE id='uuid-real2'"),1);
   for(const t of ['customers','leads','products','activities'])assert.equal(count(db,`SELECT COUNT(*) AS n FROM ${t} WHERE id LIKE 'DEMO-%'`),0,t);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM app_users WHERE email LIKE '%@demo.ctfood.invalid'"),0);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM audit_log WHERE entity_id LIKE 'DEMO-%'"),0);

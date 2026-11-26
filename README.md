@@ -2,14 +2,16 @@
 
 Ứng dụng quản lý khách hàng và bán hàng thực phẩm đông lạnh. Mã nguồn thuộc dự án CT FOOD.
 
-> **Báo cáo tiến độ cập nhật 26/11/2026:** [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) — checklist đã thực hiện, chưa nghiệm thu, dữ liệu DEMO đang có trên D1 và kế hoạch tiếp theo. Các nội dung mô tả V0.1/V0.2 bên dưới là tài liệu lịch sử; tra cứu trạng thái hiện tại ở báo cáo này.\n\n## Tình trạng
+> **Báo cáo tiến độ cập nhật 26/11/2026:** [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) — checklist đã thực hiện, chưa nghiệm thu, dữ liệu DEMO đang có trên D1 và kế hoạch tiếp theo. Các nội dung mô tả V0.1/V0.2 bên dưới là tài liệu lịch sử; tra cứu trạng thái hiện tại ở báo cáo này.
+
+## Tình trạng
 
 **Bản tiền sản xuất (V0.4) đang chạy tại https://crm-ctfood.pages.dev**, được Cloudflare Access bảo vệ, dữ liệu lưu trên Cloudflare D1. Chỉ 3 danh mục **Khách hàng, Khách tiềm năng, Sản phẩm** đọc/ghi D1; Đơn hàng, Giao hàng, Thu tiền, Công nợ, KPI vẫn khóa cho tới khi nghiệm thu (xem `docs/UAT_D1_V02.md`). Hệ thống KPI đang vận hành độc lập, mã nguồn CRM không sửa hệ thống KPI.
 
 - Giao diện tiếng Việt, dùng trên desktop và điện thoại.
-- Các phân hệ: tổng quan, khách hàng, sản phẩm, đơn hàng, giao hàng, container, thu tiền, công nợ, báo cáo, cấu hình.
-- **Chế độ xem thử** sử dụng dữ liệu giả lập lưu trong trình duyệt (localStorage), không được dùng làm dữ liệu sản xuất.
-- **Chế độ máy chủ**: Cloudflare Worker + D1, API có xác thực Cloudflare Access bằng JWT và phân quyền theo vai trò. Không bật chế độ này trước khi thiết lập Access, D1, kiểm thử.
+- Phân hệ đang chạy với D1: Tổng quan, Khách hàng, Khách tiềm năng, Sản phẩm. Phân hệ đang khóa (hiển thị "Chưa nghiệm thu"): Đơn hàng, Giao hàng & phiếu cân, Thu tiền & công nợ, Báo cáo & KPI.
+- Không còn chế độ dữ liệu giả lập trong trình duyệt (localStorage): mọi dữ liệu đọc/ghi qua API Pages Functions + D1, có xác thực Cloudflare Access (JWT) và phân quyền theo vai trò.
+- Đăng nhập: Google qua Cloudflare Access. Trang `/login` công khai chỉ hiển thị lựa chọn; tên đăng nhập/mật khẩu **chưa kích hoạt** (xem `docs/AUTH_DUAL_METHOD.md`).
 - **Không tích hợp MISA**. Kết nối KPI là việc riêng sau nghiệm thu.
 
 ## Tài liệu yêu cầu và giao diện
@@ -28,13 +30,13 @@ npm install
 npm run dev
 ```
 
-Mở http://localhost:5173 . Dữ liệu hiển thị là **dữ liệu giả lập** và nằm trong trình duyệt. Nhấn nút "Khôi phục dữ liệu mẫu" trong Cấu hình để đặt lại.
+Mở http://localhost:5173 . Ở máy cá nhân không có Cloudflare Access nên API trả lỗi xác thực và giao diện dừng ở màn đăng nhập — đây là hành vi đúng (API luôn từ chối khi không có JWT hợp lệ). Để thử giao diện có dữ liệu, đẩy nhánh lên GitHub: Cloudflare Pages tạo bản preview `<tên-nhánh>.crm-ctfood.pages.dev`, cũng được Access bảo vệ. Logic API được kiểm tra bằng `npm test`.
 
 ```bash
 npm run build
 ```
 
-Kết quả tạo trong thư mục `dist/` phù hợp Cloudflare Pages. Chưa có kết nối máy chủ trong chế độ giao diện mẫu.
+Kết quả tạo trong thư mục `dist/` phù hợp Cloudflare Pages.
 
 ## Hạ tầng production đề xuất
 
@@ -74,7 +76,21 @@ npx wrangler d1 execute ctfood-crm --remote --file=seeds/demo_seed.sql      # n�
 npx wrangler d1 execute ctfood-crm --remote --file=seeds/demo_cleanup.sql   # xoá sạch trước khi nhập dữ liệu thật
 ```
 
-File xoá chỉ xoá bản ghi `DEMO-…` và nhật ký sửa của chúng; khách hàng bạn tự tạo trên giao diện (mã UUID) cần xoá thủ công.
+File xoá gỡ bản ghi `DEMO-…`, các bản ghi tạo trên giao diện có tên bắt đầu bằng `[DEMO]` (ví dụ `[DEMO] UAT KH 001`), và nhật ký sửa của chúng. Khi chạy UAT, hãy đặt tên bản ghi thử bắt đầu bằng `[DEMO]` để được dọn tự động.
+
+## Menu Tài khoản
+
+Mọi người dùng có nhóm menu **Tài khoản**:
+- **Thông tin tài khoản**: họ tên, email, vai trò, trạng thái và danh sách quyền đúng với kiểm soát ở API.
+- **Đổi mật khẩu**: CRM đăng nhập bằng Google nên không lưu mật khẩu; trang này hướng dẫn và mở trang đổi mật khẩu / xác minh 2 bước của Google, sau đó đăng xuất để đăng nhập lại.
+
+## Quản lý tài khoản (chỉ ADMIN)
+
+Menu **Quản trị → Quản lý tài khoản** cho phép ADMIN thêm tài khoản (email Google, họ tên, vai trò), đổi vai trò và khóa/mở khóa. Khóa có hiệu lực ngay với mọi API. Hệ thống không cho ADMIN tự hạ quyền hoặc tự khóa chính mình, và mọi thay đổi được ghi `audit_log` (`entity='app_users'`).
+
+Đăng nhập cần **đủ 2 lớp**: email nằm trong policy Cloudflare Access của ứng dụng "CT FOOD CRM - Authorized Users", và tài khoản **đang hoạt động** trong CRM. Thêm người ở CRM mà chưa thêm vào Access thì người đó vẫn bị Access chặn.
+
+Cần migration `0004_app_users_versioning.sql` (`npx wrangler d1 migrations apply ctfood-crm --remote`).
 
 ## Quy ước dữ liệu
 

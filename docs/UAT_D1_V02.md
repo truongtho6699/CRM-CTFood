@@ -1,6 +1,6 @@
 # UAT — CT FOOD CRM V0.2 (Cloudflare Access + D1)
 
-> Trạng thái: **Chưa nghiệm thu end-to-end trong phiên đăng nhập trình duyệt**.
+> Trạng thái: **Đã chạy UAT bằng phiên ADMIN thật ngày 26/11/2026** (chi tiết và bằng chứng: `docs/PROJECT_STATUS.md` mục 7). Còn lại UAT-09, 10, 12, 13, 14 và kiểm thử vai trò khác ADMIN.
 > Đối tượng: Quản trị viên CT FOOD. Môi trường: https://crm-ctfood.pages.dev
 > Không dùng tên, số điện thoại, mã số thuế, hợp đồng hay dữ liệu tài chính thật.
 
@@ -16,29 +16,29 @@
 
 | Mã | Kịch bản | Kết quả mong đợi | Trạng thái |
 |---|---|---|---|
-| UAT-01 | Truy cập chưa đăng nhập | Cloudflare Access yêu cầu xác thực | Chưa chạy |
-| UAT-02 | Đăng nhập tài khoản quản trị được cấp quyền | Hiển thị D1 KẾT NỐI | Chưa chạy |
-| UAT-03 | Thêm khách hàng có tên giả lập `UAT KH 001` | Trả về thành công, dữ liệu có ID từ D1 | Chưa chạy |
-| UAT-04 | Tải lại trang / mở bằng thiết bị khác với cùng quyền | Khách hàng còn tồn tại và không bị trùng | Chưa chạy |
-| UAT-05 | Sửa số điện thoại khách hàng thử | Đọc lại thấy dữ liệu mới, `audit_log` có hành động UPDATE | Chưa chạy |
-| UAT-06 | Nhập 2 khách hàng có mã số thuế giả giống nhau | Hệ thống ngăn trùng và báo lỗi, không ghi nhầm | Chưa chạy |
-| UAT-07 | Tạo/sửa sản phẩm giả lập | Dữ liệu duy trì sau khi tải lại | Chưa chạy |
-| UAT-08 | Tạo/sửa khách tiềm năng giả lập | Dữ liệu duy trì sau khi tải lại | Chưa chạy |
+| UAT-01 | Truy cập chưa đăng nhập | Cloudflare Access yêu cầu xác thực | Đạt 26/11 (Access chuyển hướng khi không có phiên) |
+| UAT-02 | Đăng nhập tài khoản quản trị được cấp quyền | Hiển thị D1 KẾT NỐI | Đạt 26/11 |
+| UAT-03 | Thêm khách hàng có tên giả lập `UAT KH 001` | Trả về thành công, dữ liệu có ID từ D1 | Đạt 26/11 |
+| UAT-04 | Tải lại trang / mở bằng thiết bị khác với cùng quyền | Khách hàng còn tồn tại và không bị trùng | Đạt 26/11 |
+| UAT-05 | Sửa số điện thoại khách hàng thử | Đọc lại thấy dữ liệu mới, `audit_log` có hành động UPDATE | Đạt 26/11 |
+| UAT-06 | Nhập 2 khách hàng có mã số thuế giả giống nhau | Hệ thống ngăn trùng và báo lỗi, không ghi nhầm | Đạt 26/11 |
+| UAT-07 | Tạo/sửa sản phẩm giả lập | Dữ liệu duy trì sau khi tải lại | Đạt 26/11 (sửa) |
+| UAT-08 | Tạo/sửa khách tiềm năng giả lập | Dữ liệu duy trì sau khi tải lại | Đạt 26/11 (sửa) |
 | UAT-09 | Làm mới D1 trên từng danh mục | Đồng bộ dữ liệu mới nhất, không mất dữ liệu | Chưa chạy |
 | UAT-10 | Ngắt kết nối / hết phiên Access | Không có thao tác ghi danh mục nào rơi về localStorage | Chưa chạy |
-| UAT-11 | Gọi GET/POST `/api/customers` không có JWT hợp lệ | Từ chối, không lộ dữ liệu | Chưa chạy |
+| UAT-11 | Gọi GET/POST `/api/customers` không có JWT hợp lệ | Từ chối, không lộ dữ liệu | Đạt 26/11 (không cookie → Access chuyển hướng) |
 | UAT-12 | POST khác Origin hoặc Content-Type không phải JSON | API từ chối yêu cầu ghi | Chưa chạy |
 | UAT-13 | Đăng nhập vai trò Sales chưa được cấp sản phẩm | Không thêm/sửa sản phẩm được | Chưa chạy |
 | UAT-14 | Kiểm tra xuất CSV khi có ô bắt đầu bằng =, +, - hoặc @ | Excel không diễn giải như công thức nguy hiểm | Chưa chạy |
-| UAT-15 | Đối chiếu bảng `customers`, `products`, `leads`, `audit_log` | Số bản ghi và người thay đổi khớp thao tác | Chưa chạy |
+| UAT-15 | Đối chiếu bảng `customers`, `products`, `leads`, `audit_log` | Số bản ghi và người thay đổi khớp thao tác | Đạt 26/11 |
 
 ## Bổ sung sau bản sửa lỗi review (11/2026)
 
 | Mã | Kịch bản | Kết quả mong đợi | Trạng thái |
 |---|---|---|---|
-| UAT-16 | Mở cùng một khách hàng ở hai tab, lưu tab 1 rồi lưu tab 2 | Tab 2 báo "Bản ghi vừa được người khác cập nhật", dữ liệu tab 1 giữ nguyên | Chưa chạy |
-| UAT-17 | Tìm khách bằng số điện thoại hoặc mã số thuế | Ra đúng khách hàng | Chưa chạy |
-| UAT-18 | Sau migration 0003, xem cột Trạng thái / Giai đoạn | Hiển thị nhãn tiếng Việt đúng; `SELECT DISTINCT status FROM customers` chỉ còn mã chuẩn | Chưa chạy |
+| UAT-16 | Mở cùng một khách hàng ở hai tab, lưu tab 1 rồi lưu tab 2 | Tab 2 báo "Bản ghi vừa được người khác cập nhật", dữ liệu tab 1 giữ nguyên | Đạt 26/11 |
+| UAT-17 | Tìm khách bằng số điện thoại hoặc mã số thuế | Ra đúng khách hàng | Đạt 26/11 |
+| UAT-18 | Sau migration 0003, xem cột Trạng thái / Giai đoạn | Hiển thị nhãn tiếng Việt đúng; `SELECT DISTINCT status FROM customers` chỉ còn mã chuẩn | Đạt 26/11 |
 
 Kiểm thử tự động tương ứng nằm trong `tests/rbac-api.test.mjs` và `tests/migration-0003.test.mjs`; vẫn cần chạy UAT bằng phiên đăng nhập thật.
 
