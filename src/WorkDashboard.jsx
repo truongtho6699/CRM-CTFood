@@ -59,9 +59,10 @@ export function WorkDashboard({user,summary,onNavigate}){
  return <div className="ct-dashboard">
   <div className="ct-dashboard-title"><div><h2>Chào {first||'bạn'}</h2><p>Việc cần xử lý hôm nay, {new Intl.DateTimeFormat('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date())}.</p></div>
    <button className="ct-btn secondary" disabled={loading} onClick={load}><RefreshCcw size={17}/> Làm mới</button></div>
-  {error&&<Notice type="error">Không tải được việc cần làm: {error}. Bấm Làm mới để thử lại.</Notice>}
-  {loading&&!data?<div className="ct-loading" role="status">{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
-   :<div className="ct-task-grid">{order.map(k=>cards[k]).filter(Boolean)}</div>}
+  {error&&<Notice type="error">Không tải được việc cần làm: {error}. {data?'Số liệu phía dưới là lần tải trước.':'Vui lòng thử lại.'} <button type="button" className="ct-text-button" onClick={load} disabled={loading}>Thử lại</button></Notice>}
+  {loading&&!data?<div className="ct-loading" role="status" aria-live="polite"><span>Đang tải công việc theo vai trò...</span>{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
+   :error&&!data?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không tải được công việc</strong><p>Kiểm tra kết nối và thử lại. Hệ thống chưa xác nhận không có công việc.</p><button type="button" className="ct-btn secondary" onClick={load}>Tải lại dữ liệu</button></div>
+   :<div className="ct-task-grid" aria-live="polite">{order.map(k=>cards[k]).filter(Boolean)}</div>}
   {summary&&<div className="ct-quick-links">
    {[['customers','Khách hàng',summary.customers],['leads','Khách tiềm năng',summary.leads],['products','Sản phẩm',summary.products]].filter(x=>x[2]!==null&&x[2]!==undefined)
     .map(([id,name,n])=><button key={id} onClick={()=>onNavigate(id)}><strong>{Number(n).toLocaleString('vi-VN')}</strong> {name.toLowerCase()}</button>)}
