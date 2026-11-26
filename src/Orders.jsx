@@ -95,16 +95,17 @@ function OrderDetail({id,user,onClose,onEdit,onChanged}){
  const [cancelling,setCancelling]=useState(false);
  const [reason,setReason]=useState('');
  useEsc(onClose,busy);
- const load=async()=>{setError('');try{setOrder((await jsonFetch('/api/orders/'+id)).data)}catch(e){setError(e.message)}};
+ // Không xóa thông báo lỗi ở đây: sau khi thao tác bị từ chối (409) vẫn tải lại đơn nhưng giữ lời giải thích cho người dùng.
+ const load=async()=>{try{setOrder((await jsonFetch('/api/orders/'+id)).data)}catch(e){setError(e.message)}};
  useEffect(()=>{load()},[id]);
  const change=async(status)=>{
   setBusy(true);setError('');
   try{await jsonFetch('/api/orders/'+id+'/status',{method:'POST',body:JSON.stringify({status,note:reason,expected_updated_at:order.updated_at})});setCancelling(false);setReason('');await load();onChanged()}
-  catch(e){setError(e.message);if(e.status===409)load()}
+  catch(e){if(e.status===409)await load();setError(e.message)}
   finally{setBusy(false)}
  };
  const pending=order?.status==='PENDING';
- const canEdit=pending&&WRITE.includes(user.role)&&(user.role!=='SALES'||order?.sales_email===user.email);
+ const canEdit=pending&&!(order?.ticket_count>0)&&WRITE.includes(user.role)&&(user.role!=='SALES'||order?.sales_email===user.email);
  return <div className="backdrop ct-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
   <section className="modal ct-modal ct-modal-wide" role="dialog" aria-modal="true" aria-labelledby={heading}>
    <div className="ct-modal-title"><div><div className="ct-overline">CHI TIẾT ĐƠN HÀNG</div><h2 id={heading}>{order?.code||'Đang tải...'}</h2></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onClose} aria-label="Đóng"><X size={20}/></button></div>
@@ -123,6 +124,7 @@ function OrderDetail({id,user,onClose,onEdit,onChanged}){
     <OrderDeliveries order={order} user={user} onChanged={()=>{load();onChanged()}}/>
     {cancelling&&<div className="ct-cancel-box"><label>Lý do hủy đơn<span className="ct-required"> *</span><textarea rows={2} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} disabled={busy} autoFocus/></label>
      <div className="ct-modal-actions"><button className="ct-btn secondary" disabled={busy} onClick={()=>{setCancelling(false);setReason('')}}>Thôi</button><button className="ct-btn danger" disabled={busy||!reason.trim()} onClick={()=>change('CANCELLED')}><Ban size={17}/> Xác nhận hủy đơn</button></div></div>}
+    {!cancelling&&pending&&CAN_SUCCESS.includes(user.role)&&(order.pending_tickets>0||!(order.delivered_kg>0))&&<p className="ct-owner-help">{order.pending_tickets>0?'Còn '+order.pending_tickets+' phiếu cân chờ Kế toán xác nhận — xác nhận xong mới chuyển "Thành công" được.':'Chưa có phiếu cân được Kế toán xác nhận — cần ít nhất một phiếu đã xác nhận để chuyển "Thành công".'}</p>}
     {!cancelling&&pending&&<div className="ct-modal-actions" style={{marginTop:18}}>
      {canEdit&&<button className="ct-btn secondary" disabled={busy} onClick={()=>onEdit(order)}><Pencil size={17}/> Sửa đơn</button>}
      {CAN_CANCEL.includes(user.role)&&<button className="ct-btn secondary" disabled={busy} onClick={()=>setCancelling(true)}><Ban size={17}/> Hủy đơn</button>}

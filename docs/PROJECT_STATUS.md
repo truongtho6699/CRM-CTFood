@@ -139,3 +139,20 @@ Nguồn: tab "Lưu đồ" của file "2026-CTF_Hoàn thiện phần mềm". Mỗ
 | — Liên quan Đơn hàng | Đơn đã có phiếu cân thì **không sửa dòng hàng**; "Thành công" cần ≥1 phiếu đã xác nhận và **không còn phiếu chờ**; không hủy đơn khi còn phiếu chưa hủy; đơn đã chốt không thêm phiếu | `worker/src/orders.js` |
 
 **Chưa làm:** quản lý container/lô/tồn kho và giá vốn theo container (D02, D05, D06, F01); trả hàng/giao thừa thiếu có xử lý tiền (D07); KPI từ số kg đã xác nhận (KPI-01).
+
+## 10. UAT ĐƠN HÀNG & PHIẾU CÂN TRÊN PRODUCTION — 26/11/2026
+
+Phiên ADMIN thật trên https://crm-ctfood.pages.dev sau khi merge PR #3–#6 và chạy migration 0004–0006; đối chiếu D1 chỉ SELECT.
+
+| Kịch bản | Kết quả | Bằng chứng |
+| --- | --- | --- |
+| Quản lý tài khoản: danh sách | ✅ | 4 tài khoản, 3 tài khoản DEMO "Đã khóa" |
+| Tạo đơn 2 dòng | ✅ | `DH2611-0001`, tổng 183.050.000 đ, tự gán Sales phụ trách khách; form ẩn khách ngừng giao dịch và sản phẩm ngừng bán |
+| Sửa đơn / hủy đơn có lý do | ✅ | Còn 1 dòng 185.000.000 đ; hủy hiển thị người, giờ, lý do |
+| "Thành công" khi chưa có phiếu đã xác nhận | ✅ API chặn 409 | Thông báo "Chưa có phiếu cân nào được Kế toán xác nhận" — **lỗi giao diện không hiện thông báo**, đã sửa ở PR #7 |
+| Thêm phiếu cân DEMO-DH01 | ✅ | 26.950,5 kg "Chờ xác nhận", số container tự viết hoa |
+| Kế toán xác nhận phiếu (trang hàng chờ) | ✅ | "Đã xác nhận" + người xác nhận |
+| Đơn → Thành công | ✅ | Chênh lệch dòng Nạc vai −49,5 kg hiển thị đúng |
+| Nhật ký | ✅ | CREATE, VERIFY (deliveries) và COMPLETE (orders) đúng thứ tự, đúng người |
+
+**Điểm cần BGĐ quyết thêm (phát sinh khi UAT):** DEMO-DH01 có 2 dòng nhưng mới giao dòng Nạc vai; dòng Sườn non (3.000 kg) chưa giao vẫn chuyển "Thành công" được, vì quy tắc tạm chỉ yêu cầu ≥1 phiếu đã xác nhận. Cần chốt: có bắt buộc **mọi dòng** phải có phiếu đã xác nhận, hoặc giao đủ trong ngưỡng sai số (ví dụ ±2%), trước khi "Thành công" không (gắn với C03/D04).
