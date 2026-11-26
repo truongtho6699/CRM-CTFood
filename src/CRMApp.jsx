@@ -368,14 +368,14 @@ function CRMApp(){
  const adminNav=isAdmin?[ADMIN_NAV]:[];
  const selectedPage=(auth.user.role==='LOGISTICS'&&['leads','payments','kpi'].includes(route))||(route==='users'&&!isAdmin)?'dashboard':route;
  const current=[...permittedNav,...ACCOUNT_NAV,...adminNav,...LOCKED].find(x=>x.id===selectedPage)||permittedNav[0];
- const navButton=(item,extra)=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(extra||'')+(route===item.id?' active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{extra==='pending'&&<Lock size={14}/>}{item.badge&&<span className="ct-nav-badge">{item.badge}</span>}{item.id==='dashboard'&&<span className="ct-nav-arrow">●</span>}</button>};
+ const navButton=(item,extra)=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(extra||'')+(route===item.id?' active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{extra==='pending'&&<Lock size={14}/>}{item.badge&&<span className="ct-nav-badge">{item.badge}</span>}</button>};
  const Icon=current.icon;
  return <div className="ct-shell">
   <aside className={'ct-sidebar '+(drawer?'open':'')} aria-label="Điều hướng chính">
-   <div className="ct-brand"><span className="ct-logo">CT</span><div><strong>CT FOOD</strong><small>CRM MANAGEMENT</small></div><button className="ct-icon-button ct-mobile-close" onClick={()=>setDrawer(false)} aria-label="Đóng menu"><X size={19}/></button></div>
-   <nav className="ct-nav"><div className="ct-nav-label">DỮ LIỆU ĐÃ KẾT NỐI</div>{permittedNav.map(item=>navButton(item))}
-    {isAdmin&&<><div className="ct-nav-label ct-nav-label-next">QUẢN TRỊ</div>{adminNav.map(item=>navButton(item))}</>}
-    {LOCKED.length>0&&<><div className="ct-nav-label ct-nav-label-next">CHƯA NGHIỆM THU</div>{LOCKED.map(item=>navButton(item,'pending'))}</>}</nav>
+   <div className="ct-brand"><span className="ct-logo">CT</span><div><strong>CT FOOD</strong><small>Quản lý khách hàng</small></div><button className="ct-icon-button ct-mobile-close" onClick={()=>setDrawer(false)} aria-label="Đóng menu"><X size={19}/></button></div>
+   <nav className="ct-nav"><div className="ct-nav-label">Công việc</div>{permittedNav.map(item=>navButton(item))}
+    {isAdmin&&<><div className="ct-nav-label ct-nav-label-next">Quản trị</div>{adminNav.map(item=>navButton(item))}</>}
+    {LOCKED.length>0&&<><div className="ct-nav-label ct-nav-label-next">Chưa nghiệm thu</div>{LOCKED.map(item=>navButton(item,'pending'))}</>}</nav>
    <div className="ct-sidebar-footer"><span className="ct-online-dot"/> Phiên bản 0.4</div>
   </aside>
   {drawer&&<button className="ct-drawer-overlay" aria-label="Đóng menu" onClick={()=>setDrawer(false)}/>}

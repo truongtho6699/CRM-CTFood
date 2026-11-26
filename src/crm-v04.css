@@ -60,3 +60,7 @@ a.ct-btn{text-decoration:none}
  .ct-content{padding:16px 12px}
 }
 .ct-hint{font-size:13px;color:#4f6a75;margin:-6px 0 12px}
+/* Nhãn nhóm menu viết thường; số tiền trên thẻ không bị ngắt giữa chừng */
+.ct-nav-label{text-transform:none;letter-spacing:0;font-size:12px;font-weight:600;color:#9fb6bd}.ct-brand small{letter-spacing:0}
+.ct-kpi-static .ct-kpi-value{word-break:normal;overflow-wrap:normal;white-space:nowrap;font-size:clamp(16px,1.55vw,22px);font-variant-numeric:tabular-nums}
+@media(max-width:760px){.ct-kpis.ct-kpis-5{grid-template-columns:1fr 1fr;gap:10px}.ct-kpi-static{min-height:0;padding:14px}.ct-kpi-static .ct-kpi-value{font-size:17px}}
