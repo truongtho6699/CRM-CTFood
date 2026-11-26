@@ -265,3 +265,26 @@ Cách tính tiến trình: **Giao %** = kg trên phiếu cân đã xác nhận /
 - [ ] Với template Khách/NCC chưa có cột phân loại: ADMIN chọn loại áp dụng cho lô. Sale nguồn được bảo toàn bằng tên, owner_email tạm là tài khoản ADMIN thực hiện nhập; cần chốt ánh xạ Sales thực tế trước khi sử dụng nghiệp vụ phân quyền sở hữu.
 
 **Không được nhập file dữ liệu thật cho đến khi kiểm thử ứng dụng thực tế, test import-preview/commit và quy trình sao lưu đạt.**
+
+
+## 26/11/2026 — UI/UX Giai đoạn 1 (giữ V0.4)
+
+**Phạm vi:** điều hướng, trạng thái tải/lỗi, nhãn/khả năng đọc, mobile và bàn phím; không thay đổi nghiệp vụ hoặc dữ liệu D1.
+
+### Đã sửa trong mã nguồn
+- [x] Hai nhóm Quản lý danh mục và Quản trị hệ thống mặc định thu gọn khi mở Tổng quan; nhấp menu cha giờ chỉ đóng/mở, không tự chuyển trang.
+- [x] Đường dẫn trực tiếp tới các trang con hoặc điều hướng trong ứng dụng sẽ tự mở nhóm chứa trang đó để người dùng biết đang ở đâu. Người dùng vẫn có thể chủ động thu gọn.
+- [x] Bổ sung aria-expanded/aria-controls, tên vùng menu, breadcrumb có tên nhóm, Esc đóng menu mobile.
+- [x] Dashboard có phân biệt lỗi tải với trạng thái không có công việc; hiển thị thông báo và nút thử lại, kèm skeleton khi chờ.
+- [x] Lỗi bộ lọc khách hàng, dữ liệu Container và số liệu tổng quan có thông báo và thao tác thử lại.
+- [x] Bảng danh mục có nhãn vùng, hỗ trợ focus để cuộn bằng bàn phím.
+- [x] Luồng Nhập Excel hiển thị thông báo trung lập khi đọc/xem trước và thành công chỉ sau khi ghi D1.
+- [x] Bổ sung CSS mobile/touch, focus-visible, giảm chuyển động và cỡ chữ biểu mẫu; giữ màu sắc V0.4.
+- [x] Bổ sung kiểm thử hồi quy tĩnh `tests/uiux-phase1.test.mjs`.
+
+### Cần xác minh
+- [ ] GitHub Actions toàn bộ test cho commit cuối và Cloudflare success/deploy của commit cuối (kiểm tra riêng).
+- [ ] UAT trình duyệt trên ADMIN, Sales, Logistics; mobile Android/iOS; bàn phím và khả năng đọc thực tế.
+- [ ] Benchmark, WCAG, dữ liệu lớn nằm trong giai đoạn QA; việc tinh chỉnh form nghiệp vụ và luồng import nhiều lô thuộc GĐ2/GĐ3.
+
+**An toàn:** Không chạy lệnh sửa, nhập, xóa dữ liệu D1 trong GĐ1.
