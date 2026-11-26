@@ -1,8 +1,7 @@
 import {createRemoteJWKSet,jwtVerify} from 'jose';
+import {response,bad,trimText,readJson,fail} from './http.js';
+import {handleOrders} from './orders.js';
 
-const JSON_HEADERS={'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
-function response(data,status=200){return new Response(JSON.stringify(data),{status,headers:JSON_HEADERS})}
-function bad(message,status=400){return response({ok:false,error:message},status)}
 function assertConfig(env){if(!env.DB||!env.CF_ACCESS_TEAM_DOMAIN||!env.CF_ACCESS_AUD)throw new Error('API chưa được cấu hình D1 / Cloudflare Access')}
 // Cache JWKS per issuer across requests in the same isolate (jose handles key rotation/cooldown).
 const jwksCache=new Map();
@@ -102,7 +101,6 @@ async function listEntity(env,user,entity,params){
 }
 
 const writable=new Set(['customers','products','leads']);
-function trimText(x,max=255){return typeof x==='string'?x.trim().slice(0,max):''}
 function validated(entity,payload){
  if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Object.assign(new Error('Dữ liệu không hợp lệ'),{status:400});
  const name=trimText(payload.name,220);
@@ -111,17 +109,6 @@ function validated(entity,payload){
  if(entity==='products')return {name,category:trimText(payload.group??payload.category,100),origin:trimText(payload.origin,100),unit:trimText(payload.unit,25)||'kg'};
  if(entity==='leads')return {name,contact:trimText(payload.contact,100),stage:toCode(LEAD_STAGE,payload.stage,'NEW','Giai đoạn khách tiềm năng')};
  throw Object.assign(new Error('Phân hệ chưa hỗ trợ lưu D1'),{status:405});
-}
-// Kiểm tra chung cho mọi yêu cầu ghi: cùng Origin, JSON, kích thước giới hạn.
-async function readJson(request){
- const origin=request.headers.get('Origin');
- if(!origin||origin!==new URL(request.url).origin)throw Object.assign(new Error('Nguồn yêu cầu không hợp lệ'),{status:403});
- if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type')||''))throw Object.assign(new Error('Yêu cầu Content-Type: application/json'),{status:415});
- const raw=await request.text();
- if(raw.length>15000)throw Object.assign(new Error('Dữ liệu quá lớn'),{status:413});
- let payload;try{payload=JSON.parse(raw)}catch{throw Object.assign(new Error('JSON không hợp lệ'),{status:400})}
- if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Object.assign(new Error('Dữ liệu không hợp lệ'),{status:400});
- return payload;
 }
 async function saveEntity(env,user,entity,request,method,id){
  if(!writable.has(entity))return bad('Chức năng lưu D1 của phân hệ này chưa nghiệm thu',405);
@@ -250,6 +237,8 @@ export function createWorker({getKeys=remoteKeys}={}){return{
     return response({ok:true,data:{customers:counts[0]?.results?.[0]?.n??0,leads:canLeads?(counts[1]?.results?.[0]?.n??0):null,products:counts[2]?.results?.[0]?.n??0},source:'D1'});
    }
 
+   const orders=await handleOrders(env,user,request,url);
+   if(orders)return orders;
    const um=url.pathname.match(/^\/api\/users(?:\/([^/]+))?$/);
    if(um){
     if(request.method==='GET'&&!um[1])return await listUsers(env,user);

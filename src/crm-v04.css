@@ -23,3 +23,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .ct-you{color:#16836f;font-size:12px;font-weight:700}
 a.ct-btn{text-decoration:none}
+.ct-modal.ct-modal-wide{max-width:1020px;width:min(1020px,calc(100vw - 24px))}.ct-full-field{display:block;font-size:14px;margin-top:14px}.ct-full-field input{width:100%;min-height:45px}
+.ct-lines-head{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px}.ct-lines-table{min-width:760px}.ct-lines-table td{padding:8px}.ct-lines-table select,.ct-lines-table input{width:100%;min-height:40px;font-size:14px}
+.ct-num{text-align:right!important;font-variant-numeric:tabular-nums;white-space:nowrap}.ct-data-table tfoot td{background:#f7fafa;padding:12px 13px}
+.ct-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin-bottom:18px}.ct-detail-grid>div{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #edf1f3;font-size:13px}.ct-detail-grid span{color:#55707b}.ct-detail-grid strong{text-align:right}
+.ct-cancel-box{margin-top:18px;padding:16px;border:1px solid #f1c9c4;background:#fff8f7;border-radius:10px}.ct-cancel-box label{display:block;font-size:14px}.ct-cancel-box textarea{width:100%;margin:8px 0 12px;font:inherit;padding:10px;border-radius:8px;border:1px solid #d9c3c0}
+.ct-btn.danger{background:#b9382f;border-color:#b9382f;color:#fff}.ct-btn.danger:hover{background:#9c2f27}
+.ct-toolbar-wrap{flex-wrap:wrap}.ct-segment{display:inline-flex;background:#f0f5f6;border-radius:10px;padding:4px;gap:2px}.ct-segment button{border:0;background:transparent;padding:8px 13px;border-radius:7px;font-size:13px;font-weight:600;color:#3f5c66;min-height:36px}.ct-segment button.active{background:#fff;color:#0b6f5b;box-shadow:0 1px 4px #0f2f3a1f}
+.ct-nav-badge{flex:0 0 auto!important;font-size:9px;font-weight:700;letter-spacing:.3px;background:#f5e9c8;color:#7a5a0e;border-radius:10px;padding:3px 6px}
+@media(max-width:760px){.ct-detail-grid{grid-template-columns:1fr}}

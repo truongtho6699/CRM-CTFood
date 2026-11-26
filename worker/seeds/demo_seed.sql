@@ -51,3 +51,28 @@ INSERT OR IGNORE INTO activities(id,customer_id,title,due_date,owner_email,statu
  ('DEMO-CS01','DEMO-KH03','[DEMO] Gọi điện giới thiệu bảng giá tháng 12','2026-11-28','sale.an@demo.ctfood.invalid','PENDING'),
  ('DEMO-CS02','DEMO-KH05','[DEMO] Gửi mẫu sườn non cho bếp trưởng','2026-11-30','sale.binh@demo.ctfood.invalid','PENDING'),
  ('DEMO-CS03','DEMO-KH01','[DEMO] Đối chiếu công nợ tháng 11','2026-12-02','sale.an@demo.ctfood.invalid','DONE');
+
+-- Đơn hàng mẫu (cần migration 0005). Trạng thái theo Lưu đồ: PENDING / SUCCESS / CANCELLED.
+INSERT OR IGNORE INTO orders(id,code,customer_id,sales_email,order_type,status,expected_date,delivery_address,note,deposit_expected,container_count,created_by,status_note,status_by,status_at,created_at,updated_at) VALUES
+ ('DEMO-DH01','DEMO-DH01','DEMO-KH01','sale.an@demo.ctfood.invalid','IN_STOCK','PENDING','2026-12-03','Kho Minh An, Thanh Xuân','[DEMO] Giao 2 đợt',200000000,1,'sale.an@demo.ctfood.invalid',NULL,NULL,NULL,'2026-11-20 02:00:00','2026-11-26T03:00:00.000Z'),
+ ('DEMO-DH02','DEMO-DH02','DEMO-KH02','sale.binh@demo.ctfood.invalid','OFFER','PENDING','2026-12-20','Kho Đại Việt, Quận 7','[DEMO] Offer chờ lịch tàu',150000000,2,'sale.binh@demo.ctfood.invalid',NULL,NULL,NULL,'2026-11-21 02:00:00','2026-11-26T03:00:00.000Z'),
+ ('DEMO-DH03','DEMO-DH03','DEMO-KH05','sale.binh@demo.ctfood.invalid','IN_STOCK','PENDING','2026-11-15','102 Võ Văn Tần, Quận 3','[DEMO] Đã giao đủ',0,0,'sale.binh@demo.ctfood.invalid',NULL,NULL,NULL,'2026-11-10 02:00:00','2026-11-26T03:00:00.000Z'),
+ ('DEMO-DH04','DEMO-DH04','DEMO-KH04','sale.an@demo.ctfood.invalid','OFFER','PENDING','2026-11-30','KCN Quang Minh','[DEMO] Khách đổi kế hoạch',0,1,'sale.an@demo.ctfood.invalid',NULL,NULL,NULL,'2026-11-12 02:00:00','2026-11-26T03:00:00.000Z'),
+ ('DEMO-DH05','DEMO-DH05','DEMO-KH12','truongtho53@gmail.com','IN_STOCK','PENDING','2026-12-08','30 Đường 3/2, Ninh Kiều','[DEMO] Đơn do ADMIN phụ trách',100000000,1,'truongtho53@gmail.com',NULL,NULL,NULL,'2026-11-25 02:00:00','2026-11-26T03:00:00.000Z');
+-- Trigger chỉ cho chèn dòng hàng khi đơn còn PENDING: tạo mọi đơn PENDING, chèn dòng, rồi mới chốt DH03/DH04.
+-- Chỉ chèn dòng còn thiếu của đơn PENDING để chạy lại file không vướng trigger khóa đơn đã chốt.
+INSERT INTO order_lines(id,order_id,product_id,contracted_kg,unit_price_ex_vat,discount_per_kg,vat_rate,commission_per_kg)
+ SELECT v.column1,v.column2,v.column3,v.column4,v.column5,0,0,v.column6 FROM (VALUES
+ ('DEMO-DL01','DEMO-DH01','DEMO-SP01',27000,73500,500),
+ ('DEMO-DL02','DEMO-DH01','DEMO-SP04',3000,98000,0),
+ ('DEMO-DL03','DEMO-DH02','DEMO-SP05',54000,42000,300),
+ ('DEMO-DL04','DEMO-DH03','DEMO-SP04',1200,102000,500),
+ ('DEMO-DL05','DEMO-DH04','DEMO-SP02',12000,46000,0),
+ ('DEMO-DL06','DEMO-DH05','DEMO-SP06',8000,61000,0),
+ ('DEMO-DL07','DEMO-DH05','DEMO-SP07',500,215000,2000)) v
+ JOIN orders o ON o.id=v.column2 AND o.status='PENDING'
+ WHERE NOT EXISTS(SELECT 1 FROM order_lines x WHERE x.id=v.column1);
+UPDATE orders SET status='SUCCESS',status_note='Đã giao đủ theo phiếu cân',status_by='truongphong@demo.ctfood.invalid',status_at='2026-11-16T03:00:00.000Z'
+ WHERE id='DEMO-DH03' AND status='PENDING';
+UPDATE orders SET status='CANCELLED',status_note='Khách hoãn mua sang quý sau',status_by='truongphong@demo.ctfood.invalid',status_at='2026-11-18T03:00:00.000Z'
+ WHERE id='DEMO-DH04' AND status='PENDING';
