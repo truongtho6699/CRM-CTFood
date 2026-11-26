@@ -2,7 +2,16 @@
 
 ## 1. Trạng thái hiện tại
 
-Đã chuẩn bị mã nguồn, **chưa triển khai Cloudflare Pages / Worker / D1 và chưa tạo dữ liệu thật**. Không sử dụng MISA. Hệ thống KPI cũ độc lập.
+Đã triển khai Cloudflare Pages tại `crm-ctfood.pages.dev`, API chạy dưới dạng Pages Functions (`functions/api/[[path]].js` gọi `worker/src/index.js`), D1 `ctfood-crm` đã gắn, Cloudflare Access (Google) bảo vệ toàn bộ tên miền. Chỉ danh mục Khách hàng, Khách tiềm năng, Sản phẩm được ghi D1. Không sử dụng MISA. Hệ thống KPI cũ độc lập.
+
+### Áp dụng migration mới
+
+```bash
+cd worker
+npx wrangler d1 migrations apply ctfood-crm --remote
+```
+
+Migration `0003_status_codes_versioning.sql` chuẩn hóa trạng thái khách hàng / giai đoạn khách tiềm năng từ nhãn tiếng Việt sang mã, thêm `products.updated_at`, trigger ràng buộc giá trị và chỉ mục số điện thoại. Giá trị lạ (nếu có) được đưa về `ACTIVE`/`NEW` và ghi `audit_log` với `action='NORMALIZE'` để kiểm tra lại. **Hãy sao lưu D1 (`wrangler d1 export ctfood-crm --remote --output backup.sql`) trước khi chạy**, và triển khai mã mới ngay sau migration vì giao diện mới gửi `expected_updated_at` khi sửa.
 
 ## 2. Giao diện thử nghiệm (Cloudflare Pages)
 

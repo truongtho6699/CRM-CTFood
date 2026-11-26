@@ -4,7 +4,7 @@
 
 ## Tình trạng
 
-**Bản V0.1 (dự thảo kỹ thuật / chưa triển khai production)**. Chỉ hệ thống KPI là đang vận hành; mã nguồn CRM mới không sửa hệ thống KPI.
+**Bản tiền sản xuất (V0.4) đang chạy tại https://crm-ctfood.pages.dev**, được Cloudflare Access bảo vệ, dữ liệu lưu trên Cloudflare D1. Chỉ 3 danh mục **Khách hàng, Khách tiềm năng, Sản phẩm** đọc/ghi D1; Đơn hàng, Giao hàng, Thu tiền, Công nợ, KPI vẫn khóa cho tới khi nghiệm thu (xem `docs/UAT_D1_V02.md`). Hệ thống KPI đang vận hành độc lập, mã nguồn CRM không sửa hệ thống KPI.
 
 - Giao diện tiếng Việt, dùng trên desktop và điện thoại.
 - Các phân hệ: tổng quan, khách hàng, sản phẩm, đơn hàng, giao hàng, container, thu tiền, công nợ, báo cáo, cấu hình.
@@ -54,6 +54,20 @@ Xem `DEPLOYMENT.md` trước khi thiết lập môi trường. **Không tự ý 
 3. Giá vốn theo container, hoa hồng, thuế và quy tắc chốt lãi cần Ban Giám đốc / Kế toán xác nhận.
 4. Phân quyền: Sales, Trưởng phòng, Sale Admin, Kế toán, Logistics/Kho, BGĐ. Trạng thái và phạm vi từng vai trò còn đang khảo sát.
 5. Mọi số liệu minh họa trong ứng dụng không phải số liệu chính thức.
+
+## Kiểm thử
+
+```bash
+npm ci
+npm test
+```
+
+Bộ test chạy các migration thật trên SQLite trong bộ nhớ (Node 22.5+) và gọi API với JWT RS256 ký tại chỗ, kiểm tra: xác thực Access, phạm vi dữ liệu của Sales, che giá vốn/hạn mức tín dụng, quyền ghi theo vai trò, chuẩn hóa trạng thái, khóa lạc quan khi hai người cùng sửa, và migration trên dữ liệu cũ.
+
+## Quy ước dữ liệu
+
+- Trạng thái khách hàng lưu bằng mã: `ACTIVE`, `PROSPECT`, `INACTIVE`. Giai đoạn khách tiềm năng: `NEW`, `CONTACTING`, `QUOTED`, `CONVERTED`, `REJECTED`. Giao diện hiển thị nhãn tiếng Việt; API nhận cả mã lẫn nhãn và luôn lưu mã. Trigger trong D1 chặn giá trị khác.
+- Mọi lệnh sửa (PATCH) phải gửi `expected_updated_at` là `updated_at` của bản ghi khi mở form. Nếu bản ghi đã bị người khác sửa, API trả 409 và không ghi đè.
 
 ## Cấu trúc
 
