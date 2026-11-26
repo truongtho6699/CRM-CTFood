@@ -405,7 +405,7 @@ function CRMApp(){
  return <div className="ct-shell">
   <aside className={'ct-sidebar '+(drawer?'open':'')} aria-label="Điều hướng chính">
    <div className="ct-brand"><span className="ct-logo">CT</span><div><strong>CT FOOD</strong><small>Quản lý khách hàng</small></div><button className="ct-icon-button ct-mobile-close" onClick={()=>setDrawer(false)} aria-label="Đóng menu"><X size={19}/></button></div>
-   <nav className="ct-nav"><div className="ct-nav-label">Công việc</div>{permittedNav.filter(item=>item.id!=='catalogs').map(item=>navButton(item))}
+   <nav className="ct-nav" aria-label="Các chức năng CRM"><div className="ct-nav-label">Công việc</div>{permittedNav.filter(item=>item.id!=='catalogs').map(item=>navButton(item))}
     <button type="button" className={"ct-nav-item ct-nav-parent"+(['catalogs','customers','products','containers'].includes(route)?" active":"")} onClick={()=>setCatalogOpen(v=>!v)} aria-expanded={catalogOpen} aria-controls="ct-catalog-submenu"><FolderOpen size={19}/><span>Quản lý danh mục</span><ChevronDown size={16} className={catalogOpen?'ct-chevron-open':''}/></button>
     {catalogOpen&&<div id="ct-catalog-submenu" className="ct-nav-submenu">{CATALOG_NAV.map(item=>navButton(item))}</div>}
     {isAdmin&&<><div className="ct-nav-label ct-nav-label-next">Quản trị</div><button type="button" className={'ct-nav-item ct-nav-parent'+(['imports','users'].includes(route)?' active':'')} onClick={()=>setAdminOpen(v=>!v)} aria-expanded={adminOpen} aria-controls="ct-admin-submenu"><Settings size={19}/><span>Quản trị hệ thống</span><ChevronDown size={16} className={adminOpen?'ct-chevron-open':''}/></button>{adminOpen&&<div id="ct-admin-submenu" className="ct-nav-submenu">{adminNav.map(item=>navButton(item))}</div>}</>}
@@ -415,7 +415,8 @@ function CRMApp(){
   {drawer&&<button className="ct-drawer-overlay" aria-label="Đóng menu" onClick={()=>setDrawer(false)}/>}
   <div className="ct-main">
    <header className="ct-header"><div className="ct-header-left"><button className="ct-icon-button ct-menu-button" onClick={()=>setDrawer(true)} aria-label="Mở menu"><Menu size={22}/></button><div className="ct-breadcrumb"><small>CT FOOD / {CATALOG_NAV.some(item=>item.id===selectedPage)?'Quản lý danh mục / ':ADMIN_NAV.some(item=>item.id===selectedPage)?'Quản trị hệ thống / ':''}{current.name}</small><h1><Icon size={20}/>{current.name}</h1></div></div><div className="ct-header-right"><UserMenu user={auth.user} onNavigate={changePage}/></div></header>
-   <main className="ct-content">
+   <main className="ct-content" id="ct-main-content">
+    {stats.error&&<Notice type="error">Không tải được số liệu tổng quan: {stats.error} <button className="ct-text-button" type="button" onClick={loadSummary} disabled={stats.loading}>Thử lại</button></Notice>}
     {selectedPage==='dashboard'?<WorkDashboard user={auth.user} summary={summary} onNavigate={changePage}/>
      :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
      :selectedPage==='imports'?<AdminExcelImport/>
