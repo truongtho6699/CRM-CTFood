@@ -218,7 +218,7 @@ async function saveEntity(env,user,entity,request,method,id){
   return response({ok:true,data:{id:entityId,...v,updated_at:now},persisted:true},method==='POST'?201:200);
  }catch(e){
   const msg=String(e?.message||'');
-  if(/UNIQUE/i.test(msg))return bad('Mã số thuế hoặc mã danh mục đã được sử dụng.',409);
+  if(/UNIQUE/i.test(msg))return bad('Mã số thuế đã tồn tại hoặc mã danh mục này đã được sử dụng.',409);
   if(/CHECK|ctfood_invalid/i.test(msg))return bad('Dữ liệu không đúng định dạng cho phép.',400);
   console.error('D1 save failed',e?.name);
   return bad('Không lưu được dữ liệu. Vui lòng thử lại hoặc báo quản trị viên.',500);
