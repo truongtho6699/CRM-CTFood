@@ -90,12 +90,25 @@ async function listEntity(env,user,entity,params){
  const hasWhere=/\bWHERE\b/i.test(sql);
  const q=params.get('q')?.trim();
  if(q&&['customers','products','leads'].includes(entity)){
+  // D1 Production chưa có migration 0008; dùng LIKE có escape.
+  // Khi 0008 được áp dụng, tự dùng search_key để tìm không dấu như bộ test.
+  const present=await env.DB.prepare("SELECT 1 AS present FROM pragma_table_info('"+entity+"') WHERE name='search_key'").first();
+  if(present?.present){
+   sql+=(hasWhere?' AND ':' WHERE ')+"search_key LIKE ? ESCAPE '\\'";
+   bind.push(likeFolded(q.slice(0,80)));
+  }else{
+   const columns=entity==='customers'?['name','tax_code','phone','id']:entity==='products'?['name','category','id']:['name','contact','id'];
+   sql+=(hasWhere?' AND ':' WHERE ')+'('+columns.map(c=>c+" LIKE ? ESCAPE '\\'").join(' OR ')+')';
+   const term='%'+q.slice(0,80).replace(/[\\%_]/g,'\\ if(q&&['customers','products','leads'].includes(entity)){
   // Tìm kiếm tương thích cả D1 chưa áp dụng migration 0008.
   // Không phụ thuộc cột search_key khi DB production chưa được nâng schema.
   const columns=entity==='customers'?['name','tax_code','phone','id']:entity==='products'?['name','category','id']:['name','contact','id'];
   sql+=(hasWhere?' AND ':' WHERE ')+'('+columns.map(c=>c+' LIKE ?').join(' OR ')+')';
   const term='%'+q.slice(0,80)+'%';
   bind.push(...columns.map(()=>term));
+ }')+'%';
+   bind.push(...columns.map(()=>term));
+  }
  }
  if(q&&entity==='containers'){
   sql+=(hasWhere?' AND ':' WHERE ')+'(id LIKE ? OR product_id LIKE ?)';
