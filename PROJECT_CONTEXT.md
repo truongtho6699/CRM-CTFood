@@ -409,3 +409,18 @@ Yêu cầu: màn hình đăng nhập CT FOOD có **tên đăng nhập / mật kh
 **Giới hạn quan trọng:** Cloudflare Access đang bảo vệ toàn bộ tên miền `crm-ctfood.pages.dev` ở lớp ngoài trước khi trình duyệt nhận React. Người chưa đăng nhập sẽ thấy giao diện Cloudflare Access, **không thấy giao diện React tùy chỉnh ngay**. Không tự tháo lớp bảo vệ để làm hiện biểu mẫu. Để username/password hoạt động thực tế, cần chọn nhà cung cấp định danh hỗ trợ mật khẩu hoặc triển khai hệ thống xác thực riêng được bảo vệ. Sau đó phải UAT an toàn, giới hạn thử sai, cookie bảo mật, thu hồi phiên và reset mật khẩu.
 
 **Không thay đổi:** dữ liệu D1, chính sách Access, quyền ADMIN, tích hợp KPI và các chức năng tài chính chưa nghiệm thu.
+
+
+## 22. Trang đăng nhập công khai, tách khỏi ứng dụng được bảo vệ (26/11/2026)
+
+**Đã triển khai theo yêu cầu có một trang đăng nhập CT FOOD đơn giản:**
+
+- Đã thêm Pages Function `functions/login.js`, tạo trang HTML/CSS độc lập tại `https://crm-ctfood.pages.dev/login`, không phụ thuộc các asset React sau lớp Access.
+- Giao diện gồm ô tên đăng nhập, mật khẩu và nút Google. **Google** dẫn đến tên miền ứng dụng được Cloudflare Access bảo vệ. **Tên đăng nhập/mật khẩu chưa hoạt động** và ô nhập/nút đều `disabled`; không tiếp nhận, không lưu hay gửi mật khẩu.
+- Đã tạo Access application `CT FOOD Public Login Page ONLY` áp dụng *riêng* URL `crm-ctfood.pages.dev/login`, policy `bypass` cho `everyone`. Đây là trang công khai chỉ chứa giao diện đăng nhập và liên kết Google, **không có API, dữ liệu khách hàng, token hoặc chức năng thay đổi D1**.
+- Access application gốc `CT FOOD CRM - Authorized Users` vẫn bảo vệ `crm-ctfood.pages.dev` và `/api`, chính sách cho phép tài khoản quản trị đang có, giữ Google IdP và provider dự phòng. Không thay đổi RBAC trong D1.
+- Cloudflare Pages build/deploy thành công commit `ca8a99f67ae2da71e99847ce63d9609ecd9738b6`. Kiểm tra cuối qua browser trực tiếp bị gián đoạn bởi kết nối Opera, **chưa đánh dấu nghiệm thu browser**.
+- Đã bổ sung kiểm thử tĩnh `tests/login-page.test.mjs` (yêu cầu HTML tự chứa, trường password bị khóa và CSP chặn form/script/iframe). Chạy CI trước khi xác nhận trạng thái kiểm thử.
+- Hạn chế quan trọng: `/login` hiện là trang để người dùng bắt đầu đăng nhập. Khi truy cập `/` trực tiếp, Access vẫn chặn trước khi trang React có thể tải. **Không được tuyên bố user/password đăng nhập thành công**.
+- Muốn user/password thật và chuyển màn đăng nhập tùy chỉnh thành điểm truy cập mặc định, cần kiến trúc có IdP username/password hoặc cổng auth độc lập với password hashing, chống brute force, cookie HttpOnly, quản lý phiên và kiểm chứng API trong môi trường thử, sau đó thay đổi chính sách Access có kế hoạch rollback. Không vô hiệu hóa Access hiện tại để chỉ thay giao diện.
+
