@@ -224,3 +224,5 @@ Cách tính tiến trình: **Giao %** = kg trên phiếu cân đã xác nhận /
 - [ ] Cần kiểm tra migration 0008 sau khi backup và được phê duyệt, chưa tự chạy schema change D1 trong đợt này.
 
 **Lưu ý dữ liệu:** Chỉ sửa mã nguồn/triển khai GitHub–Pages; không nạp dữ liệu lịch sử từ spreadsheet hoặc thay đổi bản ghi Production trong lần triển khai này.
+
+**Đối chiếu cuối cùng ngày 26/11/2026:** Cloudflare Pages deploy `c908d372e667b39bfba68f3881175a05eb6977d2` **success**. Truy vấn D1 chỉ đọc sau khi triển khai: `customers=13`, `leads=8`, `products=10`, `containers=0`, `audit_log=17`. Đây là snapshot **mới hơn** con số DEMO 12 khách hàng/0 audit ghi ở đầu tài liệu; có biến động dữ liệu trong lúc làm việc, không quy kết nguyên nhân khi chưa đối chiếu audit. Trong phiên triển khai danh mục này, trợ lý **không chạy lệnh ghi dữ liệu D1**, chỉ cập nhật repo và Cloudflare Pages tự deploy.
