@@ -2,7 +2,7 @@
 
 Ứng dụng quản lý khách hàng và bán hàng thực phẩm đông lạnh. Mã nguồn thuộc dự án CT FOOD.
 
-## Tình trạng
+> **Báo cáo tiến độ cập nhật 26/11/2026:** [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) — checklist đã thực hiện, chưa nghiệm thu, dữ liệu DEMO đang có trên D1 và kế hoạch tiếp theo. Các nội dung mô tả V0.1/V0.2 bên dưới là tài liệu lịch sử; tra cứu trạng thái hiện tại ở báo cáo này.\n\n## Tình trạng
 
 **Bản tiền sản xuất (V0.4) đang chạy tại https://crm-ctfood.pages.dev**, được Cloudflare Access bảo vệ, dữ liệu lưu trên Cloudflare D1. Chỉ 3 danh mục **Khách hàng, Khách tiềm năng, Sản phẩm** đọc/ghi D1; Đơn hàng, Giao hàng, Thu tiền, Công nợ, KPI vẫn khóa cho tới khi nghiệm thu (xem `docs/UAT_D1_V02.md`). Hệ thống KPI đang vận hành độc lập, mã nguồn CRM không sửa hệ thống KPI.
 
