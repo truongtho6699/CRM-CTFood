@@ -139,3 +139,18 @@ a.ct-btn{text-decoration:none}
 .ct-seg button:focus-visible,.ct-filterbar select:focus-visible{outline:3px solid #1689b6;outline-offset:1px}
 .ct-filterbar .ct-linkbtn{border:0;background:none;color:#0b6f5b;font:inherit;font-size:14px;cursor:pointer;text-decoration:underline}
 @media(max-width:760px){.ct-filterbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ct-filterbar select{width:100%;max-width:none;min-width:0}.ct-seg{grid-column:1/-1;width:100%;overflow-x:auto;scrollbar-width:none}.ct-seg::-webkit-scrollbar{display:none}.ct-seg button{flex:1 0 auto;padding:0 10px;font-size:13px;white-space:nowrap}.ct-filterbar .ct-linkbtn{justify-self:start}}
+
+
+/* Ba danh mục nền / menu thu gọn */
+.ct-nav-parent{font-weight:700}.ct-nav-parent svg:last-child{transition:transform .15s ease}.ct-chevron-open{transform:rotate(180deg)}
+.ct-nav-submenu{padding:2px 0 6px 12px;margin-left:20px;border-left:1px solid #52717a}
+.ct-nav-submenu .ct-nav-item{font-size:13px;padding:10px 9px;min-height:43px}
+.ct-catalog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:20px 0}
+.ct-catalog-card{border:1px solid #dce8e8;border-radius:12px;background:#fff;text-align:left;padding:22px;display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-height:192px;color:#193d48}
+.ct-catalog-card:hover{border-color:#0c8c75;box-shadow:0 6px 20px #167a5c13}
+.ct-catalog-card:focus-visible{outline:3px solid #1689b6;outline-offset:2px}
+.ct-catalog-icon{display:grid;place-items:center;background:#e9f6f1;color:#10745d;width:43px;height:43px;border-radius:10px}
+.ct-catalog-card strong{font-size:15px}.ct-catalog-card small{font-size:12px;color:#58717b;line-height:1.55;flex:1}.ct-catalog-go{font-size:12px;color:#0d785f;font-weight:700}
+.ct-catalog-form{display:grid;gap:17px}.ct-catalog-form label{display:grid;gap:6px;font-size:13px;font-weight:650}
+.ct-catalog-form input,.ct-catalog-form select{height:45px;width:100%;border:1px solid #cbdce1;border-radius:9px;background:#fff;padding:10px 12px;font-size:14px;color:#173443}
+@media(max-width:850px){.ct-catalog-grid{grid-template-columns:1fr}}
