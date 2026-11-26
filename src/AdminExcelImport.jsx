@@ -91,7 +91,7 @@ export function AdminExcelImport(){
     <label className="ct-import-field">Chọn file Excel hoặc CSV
      <input type="file" disabled={busy} accept=".xlsx,.csv" onChange={e=>onFile(e.target.files?.[0])}/>
     </label>
-    <small>Các cột bắt buộc: {HEADERS[entity].join(' · ')}.</small>
+    <small>Các cột bắt buộc: {HEADERS[entity].join(' · ')}. Định dạng MST, mã khách và SĐT dưới dạng Text trong Excel để giữ số 0 đầu.</small>
     {filename&&<p className="ct-import-filename"><FileSpreadsheet size={16}/>{filename} — {records.length} dòng</p>}
     <div className="ct-import-actions"><button className="ct-btn primary" type="button" disabled={busy||!records.length} onClick={checked}><ShieldCheck size={17}/> {busy?'Đang kiểm tra...':'2. Kiểm tra D1'}</button><button className="ct-btn secondary" type="button" disabled={busy} onClick={clear}>Xóa file</button></div>
    </div>
