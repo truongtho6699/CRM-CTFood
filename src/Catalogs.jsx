@@ -26,7 +26,7 @@ export function ContainerCatalog({user}){
  const [error,setError]=useState('');
  const [note,setNote]=useState('');
  const [showForm,setShowForm]=useState(false);
- const [form,setForm]=useState({id:'',product_id:''});
+ const [form,setForm]=useState({id:'',product_id:'',source_product_name:''});
  const [saving,setSaving]=useState(false);
  const req=useRef(0);
  const [rev,setRev]=useState(0);
@@ -41,7 +41,7 @@ export function ContainerCatalog({user}){
   return()=>{ignore=true};
  },[page,term,rev]);
  const open=async()=>{
-  setNote('');setError('');setForm({id:'',product_id:''});
+  setNote('');setError('');setForm({id:'',product_id:'',source_product_name:''});
   try{
    const data=await jsonFetch('/api/products?limit=100');
    setProducts(data.data||[]);
@@ -67,13 +67,14 @@ export function ContainerCatalog({user}){
   <label className="ct-search" style={{marginBottom:18}}><Search size={18}/><input aria-label="Tìm mã container hoặc mã sản phẩm" placeholder="Tìm mã container, mã hàng..." value={query} onChange={e=>setQuery(e.target.value)}/></label>
   {loading?<div className="ct-loading" role="status">Đang tải danh mục...</div>
    :rows.length===0?<div className="ct-empty"><Boxes size={30}/><strong>Chưa có mã container</strong><p>Hãy thêm container hoặc thay đổi từ khóa tìm kiếm.</p></div>
-   :<><div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr><th>Mã container</th><th>Mã hàng liên kết</th><th>Trạng thái</th><th>Khối lượng (kg)</th></tr></thead>
-    <tbody>{rows.map(row=><tr key={row.id}><td data-label="Mã container" className="c-title">{row.id}</td><td data-label="Mã hàng" className="c-sub">{row.product_id}</td><td data-label="Trạng thái">{row.status==='PLANNED'?'Đã khai báo':row.status||'—'}</td><td data-label="Khối lượng">{Number(row.quantity_kg||0).toLocaleString('vi-VN')}</td></tr>)}</tbody></table></div>
+   :<><div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr><th>Mã container</th><th>Mã hàng liên kết</th><th>Tên hàng theo file cũ</th><th>Trạng thái</th><th>Khối lượng (kg)</th></tr></thead>
+    <tbody>{rows.map(row=><tr key={row.id}><td data-label="Mã container" className="c-title">{row.id}</td><td data-label="Mã hàng" className="c-sub">{row.product_id}</td><td data-label="Tên hàng nguồn">{row.source_product_name||"—"}</td><td data-label="Trạng thái">{row.status==='PLANNED'?'Đã khai báo':row.status||'—'}</td><td data-label="Khối lượng">{Number(row.quantity_kg||0).toLocaleString('vi-VN')}</td></tr>)}</tbody></table></div>
     <div className="ct-pagination"><span>Dòng {page*LIMIT+1}–{page*LIMIT+rows.length}</span><div><button type="button" className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={16}/> Trước</button><button type="button" className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={16}/></button></div></div></>}
   {showForm&&<div className="backdrop ct-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!saving)setShowForm(false)}}>
    <section className="modal ct-modal" role="dialog" aria-modal="true" aria-labelledby="ct-cont-title"><div className="ct-modal-title"><h2 id="ct-cont-title">Thêm container</h2><button className="ct-icon-button" aria-label="Đóng" type="button" disabled={saving} onClick={()=>setShowForm(false)}><X size={20}/></button></div>
     <form onSubmit={save} className="ct-catalog-form"><label>Mã container <span className="ct-required">*</span><input required minLength={4} maxLength={64} value={form.id} placeholder="Ví dụ: MEDU9856808" onChange={e=>setForm(v=>({...v,id:e.target.value.toUpperCase()}))}/></label>
      <label>Hàng hóa liên kết <span className="ct-required">*</span><select required value={form.product_id} onChange={e=>setForm(v=>({...v,product_id:e.target.value}))}><option value="">Chọn hàng hóa đã có trong CRM</option>{products.map(p=><option key={p.id} value={p.id}>{p.name} ({p.id})</option>)}</select></label>
+     <label>Tên hàng theo template nguồn<input value={form.source_product_name} maxLength={220} placeholder="Ví dụ: Ba chỉ heo ko xương có da TBN Patel" onChange={e=>setForm(v=>({...v,source_product_name:e.target.value}))}/></label>
      {products.length>=100&&<Notice>Đang hiển thị 100 sản phẩm đầu tiên; cần bổ sung tìm kiếm sản phẩm khi danh mục lớn hơn.</Notice>}
      {error&&<Notice type="error">{error}</Notice>}
      <div className="ct-modal-actions"><button type="button" className="ct-btn secondary" disabled={saving} onClick={()=>setShowForm(false)}>Hủy</button><button className="ct-btn primary" type="submit" disabled={saving||!form.product_id}>{saving?'Đang lưu...':'Lưu vào D1'}</button></div>
