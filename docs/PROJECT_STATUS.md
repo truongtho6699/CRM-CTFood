@@ -43,8 +43,8 @@
 | Ưu tiên | ID | Hạng mục | Trạng thái và điều kiện hoàn tất | Phụ trách đề xuất |
 | --- | --- | --- | --- | --- |
 | P0 | AUTH-05 | Đăng nhập bằng User/Password thực sự | ❌ Chưa có backend mật khẩu; cần chốt kiến trúc IdP hoặc dịch vụ auth có hash, rate-limit, lockout, reset, cookie HttpOnly, audit, session revoke, UAT | DEV + quản trị |
-| P0 | UAT-01 | Google OAuth end-to-end trên ứng dụng | ⏳ Chưa có bằng chứng phiên ADMIN thực tế: Google → Dashboard → `/api/me` đúng email/role | ADMIN + QA |
-| P0 | UAT-02 | CRUD và audit end-to-end | ⏳ Chưa xác minh tạo/sửa/tải lại trên D1 bằng trình duyệt đã xác thực; phải đối chiếu `audit_log` và quyền | QA + nghiệp vụ |
+| P0 | UAT-01 | Google OAuth end-to-end trên ứng dụng | ✅ Đạt với ADMIN (26/11/2026) — xem mục 7. Còn lại: thử tài khoản chưa được cấp quyền và đăng xuất | ADMIN + QA |
+| P0 | UAT-02 | CRUD và audit end-to-end | ✅ Đạt với ADMIN (26/11/2026) — xem mục 7. Quyền của vai trò khác chuyển sang SEC-04 | QA + nghiệp vụ |
 | P0 | DATA-02 | Xác nhận dữ liệu DEMO và kế hoạch trước khi nhập thật | ❌ Chưa dọn DEMO; **không chạy cleanup khi chưa sao lưu và được chủ quản phê duyệt** | DATA + quản trị |
 | P0 | DATA-03 | Module import lịch sử từ template Google Sheets/Excel | ❌ Chưa phát triển. Đã phân tích mẫu khách hàng/NCC, hàng hóa, container, giao dịch; cần staging, mapping, phát hiện trùng, duyệt, audit và rollback | BA + DATA + DEV |
 | P0 | BIZ-01 | Chốt BRD các quy tắc đơn hàng, giao thực, VAT, công nợ, giá vốn, hoa hồng, KPI | ❌ Các câu hỏi P0 trong tab `Rivew 1` còn phải chốt; **không bật ghi tài chính** | BGĐ + Sales + Kế toán |
@@ -55,9 +55,9 @@
 | P1 | SEC-04 | UAT RBAC bằng tài khoản Sales/Logistics/Kế toán thật | ⏳ Test tự động có nhưng chưa kiểm thử qua phiên thực tế | QA + quản trị |
 | P1 | OPS-01 | Sao lưu, kiểm thử restore, khóa kỳ, rollback và giám sát | ❌ Chưa có biên bản nghiệm thu khôi phục DB / vận hành | DEVOPS |
 | P1 | QA-02 | Lighthouse/Web Vitals, mobile, tải dữ liệu lớn và benchmark API | ❌ Chưa đo/kiểm thử với người dùng thật | UIUX + QA |
-| P1 | SEC-05 | Kiểm tra bảo vệ toàn bộ đường dẫn preview và domain phụ | ⏳ Chưa có nghiệm thu đầy đủ bằng browser/kiểm thử bảo mật | DEVOPS + QA |
+| P1 | SEC-05 | Kiểm tra bảo vệ toàn bộ đường dẫn preview và domain phụ | ✅ Đạt (26/11/2026) — `*.crm-ctfood.pages.dev` đã thêm vào Access app; xem mục 7. Lưu ý: Worker thừa `ctfood-crm` (chỉ file tĩnh, không D1) đã tắt build, nên xoá hẳn nếu không dùng | DEVOPS + QA |
 | P2 | ADM-01 | Màn hình quản lý người dùng, cấp quyền, thu hồi quyền | ❌ Chưa có phân hệ quản trị người dùng hoàn chỉnh | BA + DEV |
-| P2 | DOC-02 | Đồng bộ `README.md`, `DEPLOYMENT.md` và các tài liệu cũ đang nhắc `localStorage`/Cloudflare OTP | ⏳ Chưa đồng bộ toàn bộ; **ưu tiên tài liệu trạng thái hiện tại này** | DEV + BA |
+| P2 | DOC-02 | Đồng bộ `README.md`, `DEPLOYMENT.md` và các tài liệu cũ đang nhắc `localStorage`/Cloudflare OTP | ✅ Đã đồng bộ (26/11/2026): README, DEPLOYMENT, AUTH_DUAL_METHOD. `PROJECT_CONTEXT.md` giữ nguyên là nhật ký lịch sử | DEV + BA |
 
 ## 4. LỘ TRÌNH ĐỀ XUẤT
 
@@ -87,3 +87,26 @@
 - `README.md`, `DEPLOYMENT.md` — hướng dẫn cũ; cần đối chiếu theo thực trạng ngày 26/11.
 - Template/Review 1: https://docs.google.com/spreadsheets/d/1cbl_q8uxH_IlGil5XLxU2fOGrqRt9_-hP42wWZTAiuQ/edit
 - GitHub workflow: https://github.com/truongtho6699/CRM-CTFood/actions
+
+## 7. KẾT QUẢ NGHIỆM THU GIAI ĐOẠN 1 — 26/11/2026
+
+Thực hiện trên https://crm-ctfood.pages.dev (bản `main` sau PR #2) bằng phiên Google/Access thật của tài khoản ADMIN; đối chiếu D1 bằng truy vấn **chỉ SELECT**. Bản ghi thử đặt tên `[DEMO] …` để `demo_cleanup.sql` dọn được.
+
+| Mã | Kịch bản | Kết quả | Bằng chứng |
+| --- | --- | --- | --- |
+| UAT-01 | Phiên Access → `/api/me`, `/api/summary` | ✅ Đạt | `/api/me` trả đúng email ADMIN, `role=ADMIN`, `active=1`; `/api/summary` `source=D1` (12/8/10) |
+| UAT-03 | Tạo khách `[DEMO] UAT KH 001`, trạng thái "Tiềm năng" | ✅ Đạt | Báo "Đã thêm bản ghi vào D1"; D1 lưu `status=PROSPECT`, `owner_email` = tài khoản đăng nhập |
+| UAT-04 | Tải lại trang | ✅ Đạt | Bản ghi còn, không nhân đôi |
+| UAT-05 | Sửa số điện thoại | ✅ Đạt | D1 `0999200002`; `audit_log` có `UPDATE` |
+| UAT-06 | Tạo khách trùng mã số thuế | ✅ Đạt | Báo "Mã số thuế đã tồn tại ở một khách hàng khác"; không có bản ghi mới, không ghi audit |
+| UAT-07 | Sửa sản phẩm `DEMO-SP10` | ✅ Đạt | Cập nhật xuất xứ; `audit_log` `UPDATE products` |
+| UAT-08 | Đổi giai đoạn lead `DEMO-LD08` → "Chuyển đổi" | ✅ Đạt | D1 lưu `CONVERTED`; audit ghi nhận |
+| UAT-15 | Đối chiếu `audit_log` | ✅ Đạt | Đúng 4 dòng (1 CREATE, 3 UPDATE), đúng người thực hiện; 2 lần lưu bị từ chối không sinh audit |
+| UAT-16 | Hai tab cùng sửa một khách | ✅ Đạt | Tab lưu sau báo "Bản ghi vừa được người khác cập nhật…"; địa chỉ tab cũ **không** được ghi |
+| UAT-17 | Tìm theo số điện thoại | ✅ Đạt | `0999000005` → đúng 1 khách |
+| UAT-18 | Mã trạng thái sau migration 0003 | ✅ Đạt | D1 chỉ còn `ACTIVE/PROSPECT/INACTIVE` và `NEW/CONTACTING/QUOTED/CONVERTED/REJECTED`; giao diện hiển thị nhãn tiếng Việt |
+| SEC-05 | Truy cập không cookie (`credentials:'omit'`) | ✅ Đạt | Production `/`, `/api/me`, `/api/customers` và preview `fix-review-rbac-tests-status.*`, `c870255a.*` đều bị Access chuyển hướng; chỉ `crm-ctfood.pages.dev/login` trả 200 |
+
+**Chưa chạy / còn lại:** UAT-12 (Origin/Content-Type — đã có test tự động, không giả lập được từ trình duyệt), UAT-13 và SEC-04 (cần tài khoản Google thật với vai trò SALES/LOGISTICS/ACCOUNTING), UAT-14 (xuất CSV có ký tự công thức — cần tải file), UAT-10 (hết phiên Access).
+
+**Lỗi phát hiện và đã sửa trong đợt này:** sau khi bị từ chối 409, bảng phía sau vẫn hiện dữ liệu cũ → nay tự tải lại danh sách; `demo_cleanup.sql` chưa dọn bản ghi `[DEMO]` tạo trên giao diện → đã bổ sung (có test).

@@ -142,6 +142,8 @@ function MasterList({entity,role,onSaved}){
   const body=old?{...payload,expected_updated_at:old.updated_at}:payload;
   const res=await fetch(path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(body)});
   const data=await res.json().catch(()=>({}));
+  // 409 do người khác vừa sửa: tải lại danh sách để bảng phía sau hiển thị dữ liệu mới nhất.
+  if(res.status===409&&old)reload();
   if(!res.ok||!data.ok||!data.persisted)throw Error(data.error||'Máy chủ chưa xác nhận lưu dữ liệu D1');
   setEditing(undefined);setFlash(old?'Đã cập nhật bản ghi trên D1.':'Đã thêm bản ghi vào D1.');
   setPage(0);reload();onSaved();
