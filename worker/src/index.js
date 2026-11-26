@@ -90,9 +90,12 @@ async function listEntity(env,user,entity,params){
  const hasWhere=/\bWHERE\b/i.test(sql);
  const q=params.get('q')?.trim();
  if(q&&['customers','products','leads'].includes(entity)){
-  // Tìm trên search_key (đã bỏ dấu, viết thường — migration 0008): "suon", "SƯỜN", "Sườn" đều khớp. Escape "%"/"_".
-  sql+=(hasWhere?' AND ':' WHERE ')+"search_key LIKE ? ESCAPE '\\'";
-  bind.push(likeFolded(q.slice(0,80)));
+  // Tìm kiếm tương thích cả D1 chưa áp dụng migration 0008.
+  // Không phụ thuộc cột search_key khi DB production chưa được nâng schema.
+  const columns=entity==='customers'?['name','tax_code','phone','id']:entity==='products'?['name','category','id']:['name','contact','id'];
+  sql+=(hasWhere?' AND ':' WHERE ')+'('+columns.map(c=>c+' LIKE ?').join(' OR ')+')';
+  const term='%'+q.slice(0,80)+'%';
+  bind.push(...columns.map(()=>term));
  }
  if(q&&entity==='containers'){
   sql+=(hasWhere?' AND ':' WHERE ')+'(id LIKE ? OR product_id LIKE ?)';
@@ -109,7 +112,7 @@ async function listEntity(env,user,entity,params){
   if(region)add('region=?',region);
   const owner=trimText(params.get('owner')||'',254).toLowerCase();
   if(owner&&!salesFilter(user))add('owner_email=?',owner);
-  order=params.get('sort')==='name'?'search_key ASC,id ASC':'created_at DESC,id DESC';
+  order=params.get('sort')==='name'?'name COLLATE NOCASE ASC,id ASC':'created_at DESC,id DESC';
  }
  sql+=' ORDER BY '+order+' LIMIT ? OFFSET ?';
  bind.push(limit+1,offset);
