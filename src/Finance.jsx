@@ -1,7 +1,7 @@
 // FIN-01 — Thu tiền & công nợ (thử nghiệm). KPI-01 — Báo cáo & KPI (thử nghiệm).
 import React,{useEffect,useId,useState} from 'react';
 import {Plus,RefreshCcw,Search,X,Trash2,AlertTriangle,Database,ChevronLeft,ChevronRight,Ban,Pencil,Download} from 'lucide-react';
-import {Status,Notice,jsonFetch} from './ui.jsx';
+import {Status,Notice,jsonFetch,TrialNote} from './ui.jsx';
 
 const TYPE={DEPOSIT:'Đặt cọc',PAYMENT:'Thanh toán'};
 const METHOD={BANK:'Chuyển khoản',CASH:'Tiền mặt'};
@@ -56,7 +56,7 @@ function PaymentForm({onCancel,onSaved}){
  };
  return <div className="backdrop ct-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onCancel()}}>
   <section className="modal ct-modal ct-modal-wide" role="dialog" aria-modal="true" aria-labelledby={heading}>
-   <div className="ct-modal-title"><div><div className="ct-overline">THU TIỀN · THỬ NGHIỆM</div><h2 id={heading}>Lập phiếu thu</h2></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onCancel} aria-label="Đóng biểu mẫu"><X size={20}/></button></div>
+   <div className="ct-modal-title"><div><h2 id={heading}>Lập phiếu thu</h2></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onCancel} aria-label="Đóng biểu mẫu"><X size={20}/></button></div>
    <form onSubmit={submit}>
     <div className="formgrid ct-formgrid">
      <label>Khách hàng<span className="ct-required"> *</span><select required disabled={busy} value={f.customer_id} onChange={e=>set('customer_id',e.target.value)}><option value="">Chọn khách hàng...</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
@@ -92,7 +92,7 @@ function PaymentDetail({id,user,onClose,onChanged}){
  const canWrite=WRITE.includes(user.role)&&p?.status==='ACTIVE';
  return <div className="backdrop ct-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
   <section className="modal ct-modal ct-modal-wide" role="dialog" aria-modal="true" aria-labelledby={heading}>
-   <div className="ct-modal-title"><div><div className="ct-overline">PHIẾU THU</div><h2 id={heading}>{p?vnd(p.amount)+' đ — '+p.customer_name:'Đang tải...'}</h2></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onClose} aria-label="Đóng"><X size={20}/></button></div>
+   <div className="ct-modal-title"><div><h2 id={heading}>{p?vnd(p.amount)+' đ — '+p.customer_name:'Đang tải...'}</h2></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onClose} aria-label="Đóng"><X size={20}/></button></div>
    {error&&<Notice type="error">{error}</Notice>}
    {p&&<>
     <div className="ct-detail-grid">{[['Loại thu',TYPE[p.payment_type]],['Trạng thái',<Status value={p.status==='VOID'?'Đã hủy':'Hiệu lực'}/>],['Ngày thu',day(p.payment_date)],['Hình thức',METHOD[p.method]||p.method],['Số chứng từ',p.reference||'—'],['Người lập',p.created_by],['Đã phân bổ',vnd(p.allocated)+' đ'],['Chưa phân bổ',vnd(p.amount-p.allocated)+' đ'],['Ghi chú',p.note||'—']].map(([k,v])=><div key={k}><span>{k}</span><strong>{v}</strong></div>)}</div>
@@ -138,9 +138,9 @@ export function PaymentsPage({user}){
  const reload=()=>setSeq(x=>x+1);
  const t=recv?.totals;
  return <section className="ct-workspace">
-  <div className="ct-section-head"><div><div className="ct-overline">TÀI CHÍNH · THỬ NGHIỆM</div><h2>Thu tiền & công nợ</h2><p>Công nợ = giá trị hàng đã giao được Kế toán xác nhận (kg × giá chưa VAT) − tiền đã phân bổ vào đơn.</p></div>
+  <div className="ct-section-head"><div><h2>Thu tiền & công nợ</h2><p>Công nợ = giá trị hàng đã giao được Kế toán xác nhận (kg × giá chưa VAT) − tiền đã phân bổ vào đơn.</p></div>
    <div className="ct-actions"><button className="ct-btn secondary" disabled={loading} onClick={reload}><RefreshCcw size={17}/> Làm mới</button>{canWrite&&<button className="ct-btn primary" onClick={()=>setForm(true)}><Plus size={17}/> Lập phiếu thu</button>}</div></div>
-  <Notice>Phân hệ thử nghiệm: <strong>chưa tính VAT, chưa có hoàn cọc/chuyển cọc, chưa đối soát ngân hàng</strong>. Công nợ tính theo giao hàng, hạn thanh toán = ngày giao cuối + số ngày nợ của khách — giả định tạm chờ Kế toán chốt (E01–E03).</Notice>
+  <TrialNote>Chưa tính VAT, chưa có hoàn cọc, chuyển cọc và đối soát ngân hàng. Công nợ phát sinh khi Kế toán xác nhận phiếu cân; hạn thanh toán bằng ngày giao cuối cộng số ngày nợ của khách.</TrialNote>
   {flash&&<Notice type="success">{flash}</Notice>}
   {t&&<Cards items={[['Giá trị đã giao',vnd(t.delivered_value),'đ, chưa VAT'],['Đã thu (phân bổ)',vnd(t.paid),'đ'],['Còn phải thu',vnd(t.balance),'đ',t.balance>0?'warn':''],['Quá hạn',vnd(t.overdue_balance),t.overdue_orders+' đơn',t.overdue_orders?'bad':''],['Tiền chưa phân bổ',vnd(t.unallocated),'đ, khách trả dư/cọc']]}/>}
   <div className="ct-toolbar ct-toolbar-wrap">
@@ -151,14 +151,14 @@ export function PaymentsPage({user}){
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải dữ liệu</strong><p>{error}</p><button className="ct-btn secondary" onClick={reload}>Thử lại</button></div>
    :loading||(tab==='receivables'&&!recv?.data)?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :tab==='receivables'?(recv.data.length===0?<div className="ct-empty"><Database size={32}/><strong>Không có công nợ phù hợp</strong></div>
-    :<div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Sales</th><th className="ct-num">Giá trị đã giao (đ)</th><th className="ct-num">Đã thu (đ)</th><th className="ct-num">Còn lại (đ)</th><th>Hạn thanh toán</th><th>Tình trạng</th></tr></thead>
-     <tbody>{recv.data.map(r=><tr key={r.order_id}><td data-label="Mã đơn"><span className="ct-id">{r.code}</span></td><td data-label="Khách hàng">{r.customer_name}</td><td data-label="Sales">{r.sales_name||r.sales_email}</td><td data-label="Đã giao" className="ct-num">{vnd(r.delivered_value)}</td><td data-label="Đã thu" className="ct-num">{vnd(r.paid)}</td>
+    :<div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th className="ct-sm-hide">Sales</th><th className="ct-num ct-sm-hide">Giá trị đã giao (đ)</th><th className="ct-num ct-sm-hide">Đã thu (đ)</th><th className="ct-num">Còn lại (đ)</th><th>Hạn thanh toán</th><th>Tình trạng</th></tr></thead>
+     <tbody>{recv.data.map(r=><tr key={r.order_id}><td data-label="Mã đơn"><span className="ct-id">{r.code}</span></td><td data-label="Khách hàng">{r.customer_name}</td><td data-label="Sales" className="ct-sm-hide">{r.sales_name||r.sales_email}</td><td data-label="Đã giao" className="ct-num ct-sm-hide">{vnd(r.delivered_value)}</td><td data-label="Đã thu" className="ct-num ct-sm-hide">{vnd(r.paid)}</td>
       <td data-label="Còn lại" className={'ct-num '+(r.balance<0?'ct-pos':'')}><strong>{vnd(r.balance)}</strong></td><td data-label="Hạn TT">{day(r.due_date)}</td>
       <td data-label="Tình trạng">{r.balance<=0?<Status value={r.balance<0?'Trả trước':'Đã thu đủ'}/>:r.overdue_days>0?<Status value={'Quá hạn '+r.overdue_days+' ngày'}/>:<Status value="Trong hạn"/>}</td></tr>)}</tbody></table></div>)
    :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>Chưa có phiếu thu</strong><p>{canWrite?'Bấm "Lập phiếu thu" khi nhận cọc hoặc thanh toán.':''}</p></div>
-   :<><div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Ngày thu</th><th>Khách hàng</th><th>Loại</th><th>Hình thức</th><th className="ct-num">Số tiền (đ)</th><th className="ct-num">Đã phân bổ (đ)</th><th>Chứng từ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-    <tbody>{rows.map(p=><tr key={p.id}><td data-label="Ngày thu">{day(p.payment_date)}</td><td data-label="Khách hàng">{p.customer_name}</td><td data-label="Loại">{TYPE[p.payment_type]}</td><td data-label="Hình thức">{METHOD[p.method]||p.method}</td><td data-label="Số tiền" className="ct-num">{vnd(p.amount)}</td><td data-label="Đã phân bổ" className="ct-num">{vnd(p.allocated)}</td><td data-label="Chứng từ">{p.reference||'—'}</td><td data-label="Trạng thái"><Status value={p.status==='VOID'?'Đã hủy':'Hiệu lực'}/></td><td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setDetail(p.id)}>Xem</button></td></tr>)}</tbody></table></div>
-    <div className="ct-pagination"><span>Hiển thị {page*PAGE+1}–{page*PAGE+rows.length}{hasMore?' · còn dữ liệu':' · hết danh sách'}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={17}/></button></div></div></>}
+   :<><div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Ngày thu</th><th>Khách hàng</th><th>Loại</th><th className="ct-sm-hide">Hình thức</th><th className="ct-num">Số tiền (đ)</th><th className="ct-num ct-sm-hide">Đã phân bổ (đ)</th><th className="ct-sm-hide">Chứng từ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>{rows.map(p=><tr key={p.id}><td data-label="Ngày thu">{day(p.payment_date)}</td><td data-label="Khách hàng">{p.customer_name}</td><td data-label="Loại">{TYPE[p.payment_type]}</td><td data-label="Hình thức" className="ct-sm-hide">{METHOD[p.method]||p.method}</td><td data-label="Số tiền" className="ct-num">{vnd(p.amount)}</td><td data-label="Đã phân bổ" className="ct-num ct-sm-hide">{vnd(p.allocated)}</td><td data-label="Chứng từ" className="ct-sm-hide">{p.reference||'—'}</td><td data-label="Trạng thái"><Status value={p.status==='VOID'?'Đã hủy':'Hiệu lực'}/></td><td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setDetail(p.id)}>Xem</button></td></tr>)}</tbody></table></div>
+    <div className="ct-pagination"><span>Dòng {page*PAGE+1}–{page*PAGE+rows.length}{hasMore?', còn trang sau':''}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={17}/></button></div></div></>}
   {form&&<PaymentForm onCancel={()=>setForm(false)} onSaved={d=>{setForm(false);setFlash('Đã lập phiếu thu.');setTab('payments');setDetail(d.id);refreshTotals();reload()}}/>}
   {detail&&<PaymentDetail id={detail} user={user} onClose={()=>setDetail(null)} onChanged={()=>{refreshTotals();reload()}}/>}
  </section>;
@@ -190,11 +190,11 @@ export function ReportsPage({user}){
   return()=>{live=false}},[from,to,seq]);
  const t=data?.totals;
  return <section className="ct-workspace">
-  <div className="ct-section-head"><div><div className="ct-overline">BÁO CÁO · THỬ NGHIỆM</div><h2>Báo cáo & KPI</h2><p>{user.role==='SALES'?'Số liệu của riêng bạn.':'Toàn công ty, chia theo Sales, tháng, sản phẩm và khách hàng.'}</p></div>
+  <div className="ct-section-head"><div><h2>Báo cáo & KPI</h2><p>{user.role==='SALES'?'Số liệu của riêng bạn.':'Toàn công ty, chia theo Sales, tháng, sản phẩm và khách hàng.'}</p></div>
    <div className="ct-actions"><label className="ct-month">Từ tháng<input type="month" value={from} onChange={e=>e.target.value&&setFrom(e.target.value)}/></label><label className="ct-month">Đến tháng<input type="month" value={to} onChange={e=>e.target.value&&setTo(e.target.value)}/></label>
     <button className="ct-btn secondary" disabled={loading} onClick={()=>setSeq(x=>x+1)}><RefreshCcw size={17}/> Làm mới</button>
     <button className="ct-btn secondary" disabled={!data?.by_sales.length} onClick={()=>csv(data.by_sales,[['label','Sales'],['kg','San luong (kg)'],['revenue','Doanh thu chua VAT'],['commission','CK/Hoa hong'],['orders','So don']],'CTFOOD_KPI_'+data.from+'_'+data.to+'.csv')}><Download size={17}/> Xuất CSV</button></div></div>
-  <Notice>{basis||'Đang tải...'} Thời điểm ghi nhận doanh số (G01), chỉ tiêu phải giữ (G02) và giá vốn/lợi nhuận (F01–F02) <strong>chờ BGĐ/Kế toán chốt</strong>; số liệu chưa thay thế hệ thống KPI hiện hành.</Notice>
+  <TrialNote>{basis} Thời điểm ghi nhận doanh số, các chỉ tiêu phải giữ, giá vốn và lợi nhuận chưa được duyệt. Số liệu này chưa thay hệ thống KPI đang dùng.</TrialNote>
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải báo cáo</strong><p>{error}</p></div>
    :loading?<div className="ct-loading" role="status">{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :<>

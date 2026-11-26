@@ -19,7 +19,7 @@ export function LoginPanel({error='',loading=false,onRetry}){
   <div className="ct-login-layout">
    <aside className="ct-login-side">
     <div className="ct-login-side-brand"><span className="ct-auth-brand-logo">CT</span><div><strong>CT FOOD</strong><small>HỆ THỐNG QUẢN TRỊ KHÁCH HÀNG</small></div></div>
-    <div className="ct-login-side-copy"><span className="ct-login-eyebrow">CT FOOD · CRM</span><h2>Quản lý kinh doanh tập trung, rõ ràng và an toàn.</h2><p>Dữ liệu khách hàng và sản phẩm được quản lý tập trung trên Cloudflare D1, với phân quyền truy cập theo tài khoản.</p></div>
+    <div className="ct-login-side-copy"><h2>Quản lý kinh doanh tập trung, rõ ràng và an toàn.</h2><p>Khách hàng, đơn hàng, giao nhận và công nợ của CT FOOD ở một nơi, mỗi người thấy đúng phần việc của mình.</p></div>
     <div className="ct-login-side-foot"><ShieldCheck size={18}/> Xác thực và phân quyền nhiều lớp</div>
    </aside>
    <section className="ct-auth-card" aria-label="Đăng nhập CT FOOD CRM">
@@ -34,8 +34,8 @@ export function LoginPanel({error='',loading=false,onRetry}){
     {method==='google'||!PASSWORD_LOGIN_ENABLED?<div role="tabpanel" className="ct-login-panel">
      <p className="ct-auth-label">Đăng nhập bằng tài khoản đã được cấp quyền</p>
      <a className="ct-auth-google ct-auth-google-action" href={REAUTH}><span className="ct-google-logo" aria-hidden="true">G</span> Tiếp tục với Google qua Access</a>
-     <p className="ct-login-helper">{googleConfigured?'Bạn sẽ được chuyển tới Cloudflare Access để chọn Google và xác minh tài khoản.':'Lựa chọn Google cần được kích hoạt trong cấu hình Cloudflare Access.'}</p>
-     <div className="ct-login-security"><ShieldCheck size={17}/> Quyền truy cập được kiểm tra lại tại Cloudflare Access và D1.</div>
+     <p className="ct-login-helper">{googleConfigured?'Bạn sẽ được chuyển tới trang đăng nhập Google.':'Đăng nhập Google chưa được bật. Liên hệ quản trị viên.'}</p>
+     <div className="ct-login-security"><ShieldCheck size={17}/> Chỉ tài khoản được quản trị viên cấp quyền mới vào được.</div>
     </div>:<div role="tabpanel" className="ct-login-panel">
      <div className="ct-login-unavailable"><LockKeyhole size={18}/><div><strong>Chưa kích hoạt đăng nhập bằng mật khẩu</strong><span>Đang chuẩn bị xác thực riêng; chưa lưu hoặc xử lý mật khẩu người dùng.</span></div></div>
      <label className="ct-login-field"><span>Tên đăng nhập hoặc email</span><div><Mail size={18}/><input disabled autoComplete="username" placeholder="Nhập tên đăng nhập" aria-label="Tên đăng nhập (chưa kích hoạt)"/></div></label>

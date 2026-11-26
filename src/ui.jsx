@@ -16,3 +16,7 @@ export async function jsonFetch(path,options={}){
  if(!res.ok||!data.ok)throw Object.assign(Error(data.error||'Lỗi máy chủ (HTTP '+res.status+')'),{status:res.status});
  return data;
 }
+// Ghi chú "thử nghiệm" gọn một dòng; bấm để xem các quy tắc tạm thời.
+export function TrialNote({children}){
+ return <details className="ct-trial"><summary>Thử nghiệm: quy tắc đang tạm thời, chờ BGĐ và Kế toán duyệt</summary><p>{children}</p></details>;
+}

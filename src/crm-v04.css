@@ -40,3 +40,23 @@ a.ct-btn{text-decoration:none}
 .ct-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.ct-month{display:flex;flex-direction:column;font-size:11px;color:#55707b;gap:3px}.ct-month input{min-height:40px;border:1px solid #cddde2;border-radius:8px;padding:6px 8px;font:inherit;font-size:13px}
 @media(max-width:1100px){.ct-kpis.ct-kpis-5{grid-template-columns:repeat(2,minmax(0,1fr))}.ct-report-grid{grid-template-columns:1fr}}
 .ct-report-grid .ct-data-table{min-width:0}.ct-report-grid .ct-data-table th,.ct-report-grid .ct-data-table td{padding:10px 9px}
+/* Bước 1 UI/UX: menu tài khoản, ghi chú thử nghiệm gọn, thẻ gọn trên điện thoại */
+.ct-usermenu{position:relative}.ct-user{display:flex;align-items:center;gap:10px;border:1px solid transparent;background:transparent;border-radius:10px;padding:5px 8px;text-align:left;cursor:pointer;color:inherit;font:inherit}.ct-user:hover,.ct-user[aria-expanded="true"]{background:#f0f6f6;border-color:#dbe7e9}
+.ct-user-text strong{display:block;font-size:13px}.ct-user-text small{font-size:11px;color:#597783}.ct-avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#0e806b;color:#fff;font-weight:700;font-size:14px;flex-shrink:0}
+.ct-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:230px;background:#fff;border:1px solid #dbe5e9;border-radius:12px;box-shadow:0 12px 32px #0f2f3a24;padding:6px;z-index:60}
+.ct-menu-email{font-size:12px;color:#607b85;padding:8px 10px 10px;border-bottom:1px solid #edf1f3;margin-bottom:4px;overflow-wrap:anywhere}
+.ct-menu button,.ct-menu a{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:8px 10px;border:0;background:transparent;border-radius:8px;font:inherit;font-size:14px;color:#1f3d48;text-decoration:none;cursor:pointer}.ct-menu button:hover,.ct-menu a:hover{background:#eef7f4}
+.ct-trial{margin:0 0 16px;border:1px solid #ecdcb0;background:#fffaf0;border-radius:10px;font-size:13px;color:#5f4b14}.ct-trial summary{cursor:pointer;padding:9px 13px;font-weight:650;list-style:none;display:flex;align-items:center;gap:8px}.ct-trial summary::-webkit-details-marker{display:none}.ct-trial summary::before{content:"";width:8px;height:8px;border-radius:50%;background:#c99a1a}.ct-trial[open] summary{border-bottom:1px solid #f1e4c2}.ct-trial p{margin:0;padding:10px 13px 12px;line-height:1.55}
+@media(max-width:760px){
+ .ct-data-table td::before{text-align:left!important}
+ .ct-data-table .ct-sm-hide{display:none!important}
+ .ct-data-table td[data-label="Thao tác"]::before{display:none}
+ .ct-data-table td[data-label="Thao tác"]{padding-top:8px}
+ .ct-data-table td[data-label="Thao tác"]>.ct-text-button{width:100%}
+ .ct-data-table td{padding:7px 0}
+ .ct-section-head p{display:none}
+ .ct-section-head h2{margin-bottom:0}
+ .ct-user-text{display:none}.ct-user{padding:4px}
+ .ct-content{padding:16px 12px}
+}
+.ct-hint{font-size:13px;color:#4f6a75;margin:-6px 0 12px}

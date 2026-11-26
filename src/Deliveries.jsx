@@ -1,7 +1,7 @@
-// LOG-01 — Giao hàng & phiếu cân (thử nghiệm theo tab "Lưu đồ"; Kế toán xác nhận số kg thực giao).
+// LOG-01 — Giao hàng & phiếu cân (thử nghiệm; quy tắc tạm theo docs/PROJECT_STATUS.md mục 9).
 import React,{useEffect,useState} from 'react';
 import {Plus,RefreshCcw,Search,AlertTriangle,Database,ChevronLeft,ChevronRight,CheckCircle2,Ban,Pencil,X} from 'lucide-react';
-import {Status,Notice,jsonFetch} from './ui.jsx';
+import {Status,Notice,jsonFetch,TrialNote} from './ui.jsx';
 
 export const DELIVERY_STATUS={PENDING:'Chờ xác nhận',VERIFIED:'Đã xác nhận',CANCELLED:'Đã hủy'};
 export const ENTRY=['ADMIN','SALES_ADMIN','LOGISTICS','ACCOUNTING'];
@@ -101,9 +101,10 @@ export function DeliveriesPage({user}){
   return()=>{live=false}},[status,query,page,seq]);
  const reload=()=>setSeq(x=>x+1);
  return <section className="ct-workspace">
-  <div className="ct-section-head"><div><div className="ct-overline">GIAO NHẬN · THỬ NGHIỆM</div><h2>Giao hàng & phiếu cân</h2><p>Mỗi lần giao là một phiếu cân gắn với dòng hàng của đơn. Số kg đã được Kế toán xác nhận là số lượng thực tế giao.</p></div>
+  <div className="ct-section-head"><div><h2>Giao hàng & phiếu cân</h2><p>Mỗi lần giao là một phiếu cân gắn với dòng hàng của đơn. Số kg đã được Kế toán xác nhận là số lượng thực tế giao.</p></div>
    <div className="ct-actions"><button className="ct-btn secondary" disabled={loading} onClick={reload}><RefreshCcw size={17}/> Làm mới</button></div></div>
-  <Notice>Thêm phiếu cân trong <strong>Đơn hàng → Xem → Thêm phiếu cân</strong>. Phân hệ thử nghiệm: quy tắc giao nhiều lần, người nhập/xác nhận và xử lý chênh lệch đang theo giả định tạm, chờ BGĐ chốt (D01, D03, D04).</Notice>
+  <p className="ct-hint">Thêm phiếu cân trong chi tiết đơn: Đơn hàng → Xem → Thêm phiếu cân.</p>
+  <TrialNote>Một dòng hàng giao được nhiều lần, mỗi lần một phiếu cân. Sale Admin, Kho hoặc Kế toán nhập phiếu; Kế toán xác nhận số kg thực giao. Chênh lệch so với số đặt chỉ hiển thị, không bị chặn.</TrialNote>
   {msg.text&&<Notice type={msg.type}>{msg.text}</Notice>}
   <div className="ct-toolbar ct-toolbar-wrap">
    <div className="ct-segment" role="tablist" aria-label="Lọc trạng thái phiếu">{[['','Tất cả'],...Object.entries(DELIVERY_STATUS)].map(([k,v])=><button key={k} role="tab" aria-selected={status===k} className={status===k?'active':''} onClick={()=>{setStatus(k);setPage(0)}}>{v}</button>)}</div>
@@ -112,10 +113,10 @@ export function DeliveriesPage({user}){
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải phiếu cân</strong><p>{error}</p><button className="ct-btn secondary" onClick={reload}>Thử lại</button></div>
    :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>{status==='PENDING'?'Không có phiếu chờ xác nhận':'Không có phiếu cân phù hợp'}</strong></div>
-   :<><div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Ngày giao</th><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th className="ct-num">KL cân (kg)</th><th className="ct-num">KL đặt dòng (kg)</th><th>Số phiếu</th><th>Container</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+   :<><div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Ngày giao</th><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th className="ct-num">KL cân (kg)</th><th className="ct-num ct-sm-hide">KL đặt dòng (kg)</th><th>Số phiếu</th><th className="ct-sm-hide">Container</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
     <tbody>{rows.map(t=><tr key={t.id}><td data-label="Ngày giao">{day(t.delivery_date)}</td><td data-label="Mã đơn"><span className="ct-id">{t.order_code}</span></td><td data-label="Khách hàng">{t.customer_name}</td><td data-label="Sản phẩm">{t.product_name}</td>
-     <td data-label="KL cân" className="ct-num">{kg(t.delivered_kg)}</td><td data-label="KL đặt" className="ct-num">{kg(t.contracted_kg)}</td><td data-label="Số phiếu">{t.weigh_ticket_no||'—'}</td><td data-label="Container"><span className="ct-id">{t.container_no||'—'}</span></td><td data-label="Trạng thái"><Status value={DELIVERY_STATUS[t.status]}/></td>
+     <td data-label="KL cân" className="ct-num">{kg(t.delivered_kg)}</td><td data-label="KL đặt" className="ct-num ct-sm-hide">{kg(t.contracted_kg)}</td><td data-label="Số phiếu">{t.weigh_ticket_no||'—'}</td><td data-label="Container" className="ct-sm-hide"><span className="ct-id">{t.container_no||'—'}</span></td><td data-label="Trạng thái"><Status value={DELIVERY_STATUS[t.status]}/></td>
      <td data-label="Thao tác"><TicketActions t={t} user={user} onDone={text=>{setMsg({type:'success',text});reload()}} onError={text=>{setMsg({type:'error',text});reload()}}/></td></tr>)}</tbody></table></div>
-    <div className="ct-pagination"><span>Hiển thị {page*PAGE+1}–{page*PAGE+rows.length}{hasMore?' · còn dữ liệu':' · hết danh sách'}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={17}/></button></div></div></>}
+    <div className="ct-pagination"><span>Dòng {page*PAGE+1}–{page*PAGE+rows.length}{hasMore?', còn trang sau':''}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={17}/></button></div></div></>}
  </section>;
 }
