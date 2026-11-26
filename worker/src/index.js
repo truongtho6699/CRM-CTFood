@@ -96,7 +96,7 @@ async function listEntity(env,user,entity,params){
  }
  if(q&&entity==='containers'){
   sql+=(hasWhere?' AND ':' WHERE ')+'(id LIKE ? OR product_id LIKE ?)';
-  const term='%'+q.slice(0,80).replace(/[\\%_]/g,'\\$&')+'%';
+  const term='%'+q.slice(0,80)+'%';
   bind.push(term,term);
  }
  let order=(entity==='order_lines'?'l.id':entity==='deliveries'?'d.id':entity==='payments'?'p.id':'id')+' DESC';
