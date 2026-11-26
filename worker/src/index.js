@@ -59,9 +59,9 @@ async function listEntity(env,user,entity,params){
  const offset=Math.max(0,Math.min(10000,Number(params.get('offset'))||0));
  let sql='',bind=[];
  if(entity==='customers'){
-  sql=financeUser(user) ? 'SELECT id,name,tax_code,phone,email,address,region,owner_email,credit_limit,credit_days,status,created_at,updated_at FROM customers' : 'SELECT id,name,tax_code,phone,email,address,region,owner_email,status,created_at,updated_at FROM customers';
+  sql=financeUser(user) ? 'SELECT id,name,tax_code,phone,email,address,region,owner_email,credit_limit,credit_days,status,created_at,updated_at,legacy_code,partner_type,contact_name,contact_phone,source_sales_name FROM customers' : 'SELECT id,name,tax_code,phone,email,address,region,owner_email,status,created_at,updated_at,legacy_code,partner_type,contact_name,contact_phone,source_sales_name FROM customers';
   if(salesFilter(user)){sql+=' WHERE owner_email=?';bind.push(user.email)}
- }else if(entity==='products')sql='SELECT id,name,category,origin,brand,unit,active,updated_at FROM products';
+ }else if(entity==='products')sql='SELECT id,name,category,origin,brand,unit,active,updated_at,legacy_code,packaging_type,conversion_kg,conversion_note FROM products';
  else if(entity==='orders'){
   sql='SELECT id,customer_id,sales_email,order_type,status,expected_date,delivery_address,note,created_at FROM orders';
   if(salesFilter(user)){sql+=' WHERE sales_email=?';bind.push(user.email)}
@@ -74,8 +74,8 @@ async function listEntity(env,user,entity,params){
  }else if(entity==='containers'){
   // SALES chỉ nhìn mã container, sản phẩm và tồn; không bao giờ có giá vốn trong response.
   sql=financeUser(user)
-    ?'SELECT id,product_id,import_lot,supplier,arrival_date,quantity_kg,remaining_kg,cost_per_kg,status,created_at FROM containers'
-    :'SELECT id,product_id,arrival_date,quantity_kg,remaining_kg,status,created_at FROM containers';
+    ?'SELECT id,product_id,import_lot,supplier,arrival_date,quantity_kg,remaining_kg,cost_per_kg,status,created_at,source_product_name FROM containers'
+    :'SELECT id,product_id,arrival_date,quantity_kg,remaining_kg,status,created_at,source_product_name FROM containers';
  }else if(entity==='payments'){
   sql='SELECT p.id,p.customer_id,p.amount,p.payment_date,p.payment_type,p.reference,p.created_at FROM payments p';
   if(salesFilter(user)){sql+=' WHERE EXISTS(SELECT 1 FROM customers c WHERE c.id=p.customer_id AND c.owner_email=?)';bind.push(user.email)}
@@ -96,7 +96,7 @@ async function listEntity(env,user,entity,params){
    sql+=(hasWhere?' AND ':' WHERE ')+"search_key LIKE ? ESCAPE '\\'";
    bind.push(likeFolded(q.slice(0,80)));
   }else{
-   const columns=entity==='customers'?['name','tax_code','phone','id']:entity==='products'?['name','category','id']:['name','contact','id'];
+   const columns=entity==='customers'?['name','tax_code','phone','id','legacy_code','contact_name','contact_phone']:entity==='products'?['name','category','id','legacy_code']:['name','contact','id'];
    sql+=(hasWhere?' AND ':' WHERE ')+'('+columns.map(c=>c+" LIKE ? ESCAPE '\\'").join(' OR ')+')';
    const term='%'+q.slice(0,80).replace(/[\\%_]/g,'\\$&')+'%';
    bind.push(...columns.map(()=>term));
@@ -131,8 +131,21 @@ function validated(entity,payload){
  if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Object.assign(new Error('Dữ liệu không hợp lệ'),{status:400});
  const name=trimText(payload.name,220);
  if(!name)throw Object.assign(new Error('Tên không được trống'),{status:400});
- if(entity==='customers')return {name,phone:trimText(payload.phone,40),tax_code:trimText(payload.tax??payload.tax_code,35)||null,region:trimText(payload.region,100),status:toCode(CUSTOMER_STATUS,payload.status,'ACTIVE','Trạng thái khách hàng'),address:trimText(payload.address,300)};
- if(entity==='products')return {name,category:trimText(payload.group??payload.category,100),origin:trimText(payload.origin,100),unit:trimText(payload.unit,25)||'kg'};
+ if(entity==='customers'){
+  const partner_type=trimText(payload.partner_type||'CUSTOMER',12).toUpperCase();
+  if(!['CUSTOMER','SUPPLIER','BOTH'].includes(partner_type))throw fail('Loại đối tác không hợp lệ',400);
+  const days=payload.credit_days===''||payload.credit_days==null?0:Number(payload.credit_days);
+  if(!Number.isInteger(days)||days<0||days>3650)throw fail('Thời hạn công nợ phải là số ngày từ 0 đến 3650',400);
+  const email=trimText(payload.email,254);
+  if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw fail('Email liên hệ không hợp lệ',400);
+  return {name,phone:trimText(payload.phone,40),tax_code:trimText(payload.tax??payload.tax_code,35)||null,region:trimText(payload.region,100),status:toCode(CUSTOMER_STATUS,payload.status,'ACTIVE','Trạng thái khách hàng'),address:trimText(payload.address,300),legacy_code:trimText(payload.legacy_code,60)||null,partner_type,contact_name:trimText(payload.contact_name,120),contact_phone:trimText(payload.contact_phone,40),source_sales_name:trimText(payload.source_sales_name,120),email,credit_days:days};
+ }
+ if(entity==='products'){
+  const conversionRaw=payload.conversion_kg;
+  const conversion_kg=conversionRaw==null||conversionRaw===''?null:Number(conversionRaw);
+  if(conversion_kg!==null&&(!Number.isFinite(conversion_kg)||conversion_kg<=0||conversion_kg>1000000000))throw fail('Khối lượng quy đổi phải lớn hơn 0 hoặc để trống',400);
+  return {name,category:trimText(payload.group??payload.category,100),origin:trimText(payload.origin,100),unit:trimText(payload.unit,25)||'kg',legacy_code:trimText(payload.legacy_code,60)||null,packaging_type:trimText(payload.packaging_type,100),conversion_kg,conversion_note:trimText(payload.conversion_note,150)};
+ }
  if(entity==='leads')return {name,contact:trimText(payload.contact,100),stage:toCode(LEAD_STAGE,payload.stage,'NEW','Giai đoạn khách tiềm năng')};
  throw Object.assign(new Error('Phân hệ chưa hỗ trợ lưu D1'),{status:405});
 }
@@ -143,14 +156,15 @@ async function createCatalogContainer(env,user,request){
  const payload=await readJson(request);
  const id=trimText(payload.id,64).toUpperCase();
  const product_id=trimText(payload.product_id,100);
+ const source_product_name=trimText(payload.source_product_name,220);
  if(!/^[A-Z0-9][A-Z0-9_-]{3,63}$/.test(id))return bad('Mã container phải có 4-64 ký tự chữ in hoa, số, gạch nối hoặc gạch dưới.',400);
  if(!product_id)return bad('Phải chọn sản phẩm có trong danh mục',400);
  const product=await env.DB.prepare('SELECT id FROM products WHERE id=? AND active=1').bind(product_id).first();
  if(!product)return bad('Sản phẩm chưa tồn tại hoặc không hoạt động',400);
  const exists=await env.DB.prepare('SELECT id FROM containers WHERE id=?').bind(id).first();
  if(exists)return bad('Mã container đã tồn tại',409);
- const stmt=env.DB.prepare("INSERT INTO containers(id,product_id,quantity_kg,remaining_kg,status) VALUES(?,?,0,0,'PLANNED')").bind(id,product_id);
- const audit=env.DB.prepare("INSERT INTO audit_log(id,actor_email,action,entity,entity_id,after_json) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),user.email,'CREATE','containers',id,JSON.stringify({id,product_id,status:'PLANNED'}));
+ const stmt=env.DB.prepare("INSERT INTO containers(id,product_id,quantity_kg,remaining_kg,status,source_product_name) VALUES(?,?,0,0,'PLANNED',?)") .bind(id,product_id,source_product_name);
+ const audit=env.DB.prepare("INSERT INTO audit_log(id,actor_email,action,entity,entity_id,after_json) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),user.email,'CREATE','containers',id,JSON.stringify({id,product_id,source_product_name,status:'PLANNED'}));
  try{
   await env.DB.batch([stmt,audit]);
   return response({ok:true,persisted:true,data:{id,product_id,status:'PLANNED'}},201);
@@ -182,12 +196,12 @@ async function saveEntity(env,user,entity,request,method,id){
  if(entity==='customers'){
   const owner=method==='PATCH'?old.owner_email:user.email;
   stmt=method==='POST'
-   ?env.DB.prepare('INSERT INTO customers(id,name,tax_code,phone,region,address,owner_email,status,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(entityId,v.name,v.tax_code,v.phone,v.region,v.address,owner,v.status,now)
-   :env.DB.prepare('UPDATE customers SET name=?,tax_code=?,phone=?,region=?,address=?,status=?,updated_at=? WHERE id=? AND updated_at=?').bind(v.name,v.tax_code,v.phone,v.region,v.address,v.status,now,entityId,expected);
+   ?env.DB.prepare('INSERT INTO customers(id,name,tax_code,phone,region,address,owner_email,status,updated_at,email,credit_days,legacy_code,partner_type,contact_name,contact_phone,source_sales_name) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(entityId,v.name,v.tax_code,v.phone,v.region,v.address,owner,v.status,now,v.email,v.credit_days,v.legacy_code,v.partner_type,v.contact_name,v.contact_phone,v.source_sales_name)
+   :env.DB.prepare('UPDATE customers SET name=?,tax_code=?,phone=?,region=?,address=?,status=?,updated_at=?,email=?,credit_days=?,legacy_code=?,partner_type=?,contact_name=?,contact_phone=?,source_sales_name=? WHERE id=? AND updated_at=?').bind(v.name,v.tax_code,v.phone,v.region,v.address,v.status,now,v.email,v.credit_days,v.legacy_code,v.partner_type,v.contact_name,v.contact_phone,v.source_sales_name,entityId,expected);
  }else if(entity==='products'){
   stmt=method==='POST'
-   ?env.DB.prepare('INSERT INTO products(id,name,category,origin,unit,updated_at) VALUES(?,?,?,?,?,?)').bind(entityId,v.name,v.category,v.origin,v.unit,now)
-   :env.DB.prepare('UPDATE products SET name=?,category=?,origin=?,unit=?,updated_at=? WHERE id=? AND updated_at=?').bind(v.name,v.category,v.origin,v.unit,now,entityId,expected);
+   ?env.DB.prepare('INSERT INTO products(id,name,category,origin,unit,updated_at,legacy_code,packaging_type,conversion_kg,conversion_note) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(entityId,v.name,v.category,v.origin,v.unit,now,v.legacy_code,v.packaging_type,v.conversion_kg,v.conversion_note)
+   :env.DB.prepare('UPDATE products SET name=?,category=?,origin=?,unit=?,updated_at=?,legacy_code=?,packaging_type=?,conversion_kg=?,conversion_note=? WHERE id=? AND updated_at=?').bind(v.name,v.category,v.origin,v.unit,now,v.legacy_code,v.packaging_type,v.conversion_kg,v.conversion_note,entityId,expected);
  }else if(entity==='leads'){
   const owner=method==='PATCH'?old.owner_email:user.email;
   stmt=method==='POST'
@@ -202,7 +216,7 @@ async function saveEntity(env,user,entity,request,method,id){
   return response({ok:true,data:{id:entityId,...v,updated_at:now},persisted:true},method==='POST'?201:200);
  }catch(e){
   const msg=String(e?.message||'');
-  if(/UNIQUE/i.test(msg))return bad('Mã số thuế đã tồn tại ở một khách hàng khác.',409);
+  if(/UNIQUE/i.test(msg))return bad('Mã số thuế hoặc mã danh mục đã được sử dụng.',409);
   if(/CHECK|ctfood_invalid/i.test(msg))return bad('Dữ liệu không đúng định dạng cho phép.',400);
   console.error('D1 save failed',e?.name);
   return bad('Không lưu được dữ liệu. Vui lòng thử lại hoặc báo quản trị viên.',500);
