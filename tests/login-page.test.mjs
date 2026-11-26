@@ -16,7 +16,7 @@ test('public sign-in serves a self-contained Vietnamese page without loading pri
 
 test('only Google is shown; no password controls or outdated warnings',async()=>{
  const html=await onRequestGet().text();
- assert.doesNotMatch(html,/<input\\b|class="btn password"|Chưa kích hoạt|Tên đăng nhập hoặc email/i);
+ assert.doesNotMatch(html,/<input\b|class="btn password"|Chưa kích hoạt|Tên đăng nhập hoặc email/i);
  assert.match(html,/Chỉ dành cho tài khoản được cấp quyền/);
 });
 
