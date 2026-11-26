@@ -64,6 +64,18 @@ npm test
 
 Bộ test chạy các migration thật trên SQLite trong bộ nhớ (Node 22.5+) và gọi API với JWT RS256 ký tại chỗ, kiểm tra: xác thực Access, phạm vi dữ liệu của Sales, che giá vốn/hạn mức tín dụng, quyền ghi theo vai trò, chuẩn hóa trạng thái, khóa lạc quan khi hai người cùng sửa, và migration trên dữ liệu cũ.
 
+## Dữ liệu mẫu (demo / UAT)
+
+D1 thật có thể nạp dữ liệu mẫu để trình diễn và chạy UAT: 12 khách hàng, 8 khách tiềm năng, 10 sản phẩm, 3 việc chăm sóc. Mọi bản ghi có mã `DEMO-…` và tên gắn `[DEMO]`; mã số thuế `9999…`, điện thoại `0999…` để không trùng doanh nghiệp thật. Ba tài khoản Sales mẫu dùng đuôi `@demo.ctfood.invalid` và ở trạng thái **ngừng hoạt động**, nên không ai đăng nhập được bằng chúng.
+
+```bash
+cd worker
+npx wrangler d1 execute ctfood-crm --remote --file=seeds/demo_seed.sql      # nạp (chạy lại không bị trùng)
+npx wrangler d1 execute ctfood-crm --remote --file=seeds/demo_cleanup.sql   # xoá sạch trước khi nhập dữ liệu thật
+```
+
+File xoá chỉ xoá bản ghi `DEMO-…` và nhật ký sửa của chúng; khách hàng bạn tự tạo trên giao diện (mã UUID) cần xoá thủ công.
+
 ## Quy ước dữ liệu
 
 - Trạng thái khách hàng lưu bằng mã: `ACTIVE`, `PROSPECT`, `INACTIVE`. Giai đoạn khách tiềm năng: `NEW`, `CONTACTING`, `QUOTED`, `CONVERTED`, `REJECTED`. Giao diện hiển thị nhãn tiếng Việt; API nhận cả mã lẫn nhãn và luôn lưu mã. Trigger trong D1 chặn giá trị khác.

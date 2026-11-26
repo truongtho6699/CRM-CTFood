@@ -151,7 +151,8 @@ function MasterList({entity,role,onSaved}){
   if(key==='tax')return toText(row.tax_code||row.tax)||'—';
   if(key==='group')return toText(row.category||row.group)||'—';
   if(key==='status'||key==='stage')return <Status value={(key==='status'?STATUS_LABEL:STAGE_LABEL)[row[key]]||row[key]}/>;
-  if(key==='id')return <span className="ct-id">{toText(row.id).slice(0,8)}</span>;
+  // UUID dài thì rút gọn (di chuột để xem đủ); mã ngắn như DEMO-KH12 hiển thị nguyên vẹn.
+  if(key==='id'){const id=toText(row.id);return <span className="ct-id" title={id}>{id.length>12?id.slice(0,8)+'…':id}</span>}
   return toText(row[key])||'—';
  };
  return <section className="ct-workspace">
