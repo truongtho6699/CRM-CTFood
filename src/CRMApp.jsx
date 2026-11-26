@@ -363,7 +363,7 @@ function CRMApp(){
  const [auth,setAuth]=useState({status:'loading',user:null,error:''});
  const [route,setRoute]=useState(getRoute);
  const [drawer,setDrawer]=useState(false);
- const [catalogOpen,setCatalogOpen]=useState(true);
+ const [catalogOpen,setCatalogOpen]=useState(false);
  const [summary,setSummary]=useState(null);
  const [updatedAt,setUpdatedAt]=useState(null);
  const [stats,setStats]=useState({loading:false,error:''});
