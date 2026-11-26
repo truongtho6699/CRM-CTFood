@@ -404,7 +404,7 @@ function CRMApp(){
    <nav className="ct-nav"><div className="ct-nav-label">Công việc</div>{permittedNav.filter(item=>item.id!=='catalogs').map(item=>navButton(item))}
     <button type="button" className={"ct-nav-item ct-nav-parent"+(['catalogs','customers','products','containers'].includes(route)?" active":"")} onClick={()=>{setCatalogOpen(v=>!v);changePage('catalogs')}} aria-expanded={catalogOpen}><FolderOpen size={19}/><span>Quản lý danh mục</span><ChevronDown size={16} className={catalogOpen?'ct-chevron-open':''}/></button>
     {catalogOpen&&<div className="ct-nav-submenu">{CATALOG_NAV.map(item=>navButton(item))}</div>}
-    {isAdmin&&<><div className="ct-nav-label ct-nav-label-next">Quản trị</div>{adminNav.map(item=>navButton(item))}</>}
+    {isAdmin&&<><div className="ct-nav-label ct-nav-label-next">Quản trị hệ thống</div>{adminNav.map(item=>navButton(item))}</>}
     {LOCKED.length>0&&<><div className="ct-nav-label ct-nav-label-next">Chưa nghiệm thu</div>{LOCKED.map(item=>navButton(item,'pending'))}</>}</nav>
    <div className="ct-sidebar-footer"><span className="ct-online-dot"/> Phiên bản 0.4</div>
   </aside>
