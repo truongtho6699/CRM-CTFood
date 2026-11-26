@@ -1,6 +1,6 @@
 import React,{useEffect,useId,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {LayoutDashboard,Users,UserPlus,Package,ShoppingCart,Truck,Wallet,ChartColumn,Settings,Search,Plus,Download,RefreshCcw,Menu,X,AlertTriangle,Lock,Database,CheckCircle2,ChevronLeft,ChevronRight,LogOut,ArrowRight,Clock3,ShieldCheck,Info,UserCog,CircleUser,KeyRound,ExternalLink} from 'lucide-react';
+import {LayoutDashboard,Users,UserPlus,Package,Boxes,FolderOpen,ChevronDown,ShoppingCart,Truck,Wallet,ChartColumn,Settings,Search,Plus,Download,RefreshCcw,Menu,X,AlertTriangle,Lock,Database,CheckCircle2,ChevronLeft,ChevronRight,LogOut,ArrowRight,Clock3,ShieldCheck,Info,UserCog,CircleUser,KeyRound,ExternalLink} from 'lucide-react';
 import './crm-v04.css';
 import {LoginPanel} from './AuthGateway.jsx';
 import {SCHEMAS} from './data.js';
@@ -10,15 +10,16 @@ import {DeliveriesPage} from './Deliveries.jsx';
 import {PaymentsPage,ReportsPage} from './Finance.jsx';
 import {CustomerDetail} from './Customers.jsx';
 import {WorkDashboard} from './WorkDashboard.jsx';
+import {CatalogHome,ContainerCatalog} from './Catalogs.jsx';
 
 const LIVE=['customers','leads','products'];
+const CATALOG_NAV=[{id:'customers',name:'Khách hàng / NCC',icon:Users},{id:'products',name:'Hàng hóa',icon:Package},{id:'containers',name:'Container / Lô hàng',icon:Boxes}];
 const LOCKED=[
 ];
 const NAV=[
  {id:'dashboard',name:'Tổng quan',icon:LayoutDashboard},
- {id:'customers',name:'Khách hàng',icon:Users},
  {id:'leads',name:'Khách tiềm năng',icon:UserPlus},
- {id:'products',name:'Sản phẩm',icon:Package},
+ {id:'catalogs',name:'Quản lý danh mục',icon:FolderOpen},
  {id:'orders',name:'Đơn hàng',icon:ShoppingCart,badge:'Thử nghiệm'},
  {id:'deliveries',name:'Giao hàng & phiếu cân',icon:Truck,badge:'Thử nghiệm'},
  {id:'payments',name:'Thu tiền & công nợ',icon:Wallet,badge:'Thử nghiệm'},
@@ -48,7 +49,7 @@ const STATUS_LABEL={ACTIVE:'Đang giao dịch',PROSPECT:'Tiềm năng',INACTIVE:
 const STAGE_LABEL={NEW:'Mới',CONTACTING:'Đang liên hệ',QUOTED:'Đã báo giá',CONVERTED:'Chuyển đổi',REJECTED:'Không phù hợp'};
 const getRoute=()=>{
  const page=(window.location.hash||'#/dashboard').replace(/^#\/?/,'').split('?')[0];
- return [...NAV,...ACCOUNT_NAV,ADMIN_NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
+ return [...NAV,...CATALOG_NAV,...ACCOUNT_NAV,ADMIN_NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
 };
 function safeCSV(data,label){
  if(!data.length)return;
@@ -359,6 +360,7 @@ function CRMApp(){
  const [auth,setAuth]=useState({status:'loading',user:null,error:''});
  const [route,setRoute]=useState(getRoute);
  const [drawer,setDrawer]=useState(false);
+ const [catalogOpen,setCatalogOpen]=useState(true);
  const [summary,setSummary]=useState(null);
  const [updatedAt,setUpdatedAt]=useState(null);
  const [stats,setStats]=useState({loading:false,error:''});
@@ -390,13 +392,15 @@ function CRMApp(){
  const permittedNav=NAV.filter(item=>!(auth.user.role==='LOGISTICS'&&['leads','payments','kpi'].includes(item.id)));
  const adminNav=isAdmin?[ADMIN_NAV]:[];
  const selectedPage=(auth.user.role==='LOGISTICS'&&['leads','payments','kpi'].includes(route))||(route==='users'&&!isAdmin)?'dashboard':route;
- const current=[...permittedNav,...ACCOUNT_NAV,...adminNav,...LOCKED].find(x=>x.id===selectedPage)||permittedNav[0];
+ const current=[...permittedNav,...CATALOG_NAV,...ACCOUNT_NAV,...adminNav,...LOCKED].find(x=>x.id===selectedPage)||permittedNav[0];
  const navButton=(item,extra)=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(extra||'')+(route===item.id?' active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{extra==='pending'&&<Lock size={14}/>}{item.badge&&<span className="ct-nav-badge">{item.badge}</span>}</button>};
  const Icon=current.icon;
  return <div className="ct-shell">
   <aside className={'ct-sidebar '+(drawer?'open':'')} aria-label="Điều hướng chính">
    <div className="ct-brand"><span className="ct-logo">CT</span><div><strong>CT FOOD</strong><small>Quản lý khách hàng</small></div><button className="ct-icon-button ct-mobile-close" onClick={()=>setDrawer(false)} aria-label="Đóng menu"><X size={19}/></button></div>
    <nav className="ct-nav"><div className="ct-nav-label">Công việc</div>{permittedNav.map(item=>navButton(item))}
+    <button type="button" className="ct-nav-item ct-nav-parent" onClick={()=>setCatalogOpen(v=>!v)} aria-expanded={catalogOpen}><FolderOpen size={19}/><span>Danh mục nền</span><ChevronDown size={16} className={catalogOpen?'ct-chevron-open':''}/></button>
+    {catalogOpen&&<div className="ct-nav-submenu">{CATALOG_NAV.map(item=>navButton(item))}</div>}
     {isAdmin&&<><div className="ct-nav-label ct-nav-label-next">Quản trị</div>{adminNav.map(item=>navButton(item))}</>}
     {LOCKED.length>0&&<><div className="ct-nav-label ct-nav-label-next">Chưa nghiệm thu</div>{LOCKED.map(item=>navButton(item,'pending'))}</>}</nav>
    <div className="ct-sidebar-footer"><span className="ct-online-dot"/> Phiên bản 0.4</div>
@@ -407,6 +411,8 @@ function CRMApp(){
    <main className="ct-content">
     {selectedPage==='dashboard'?<WorkDashboard user={auth.user} summary={summary} onNavigate={changePage}/>
      :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
+     :selectedPage==='catalogs'?<CatalogHome onNavigate={changePage}/>
+     :selectedPage==='containers'?<ContainerCatalog user={auth.user}/>
      :selectedPage==='orders'?<OrdersPage user={auth.user}/>
      :selectedPage==='deliveries'?<DeliveriesPage user={auth.user}/>
      :selectedPage==='payments'?<PaymentsPage user={auth.user}/>
