@@ -138,10 +138,11 @@ function MasterList({entity,role,user,onSaved}){
  const [sequence,setSequence]=useState(0);
  const [filters,setFilters]=useState({status:'',region:'',owner:'',sort:'recent'});
  const [facets,setFacets]=useState({regions:[],owners:[]});
+ const [facetsError,setFacetsError]=useState('');
  const setFilter=(k,v)=>{setPage(0);setFilters(f=>({...f,[k]:v}))};
  const filterQs=isCustomers?Object.entries(filters).filter(([,v])=>v).map(([k,v])=>'&'+k+'='+encodeURIComponent(v)).join(''):'';
  const filtered=isCustomers&&(filters.status||filters.region||filters.owner);
- useEffect(()=>{if(!isCustomers)return;jsonFetch('/api/customers/facets').then(d=>setFacets(d.data||{regions:[],owners:[]})).catch(()=>{})},[isCustomers,sequence]);
+ useEffect(()=>{if(!isCustomers)return;setFacetsError('');jsonFetch('/api/customers/facets').then(d=>setFacets(d.data||{regions:[],owners:[]})).catch(()=>setFacetsError('Không tải được bộ lọc khu vực và người phụ trách.'))},[isCustomers,sequence]);
  const canWrite=ROLE_WRITE.has(role)||(role==='SALES'&&entity!=='products');
  const reqId=useRef(0);
  useEffect(()=>{
@@ -190,6 +191,7 @@ function MasterList({entity,role,user,onSaved}){
   </div>
   {flash&&<Notice type="success">{flash}</Notice>}
   <div className="ct-toolbar"><label className="ct-search"><Search size={18}/><span className="sr-only">Tìm kiếm {schema.title.toLowerCase()}</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={entity==='customers'?'Tìm theo tên, số điện thoại hoặc mã số thuế...':'Tìm theo tên '+schema.title.toLowerCase()+'...'} aria-label={'Tìm kiếm '+schema.title}/></label></div>
+  {facetsError&&<Notice type="error">{facetsError} <button className="ct-text-button" type="button" onClick={reload}>Thử lại</button></Notice>}
   {isCustomers&&<div className="ct-filterbar" role="group" aria-label="Lọc khách hàng">
    <div className="ct-seg" role="group" aria-label="Trạng thái">{[['','Tất cả'],['ACTIVE','Đang giao dịch'],['PROSPECT','Tiềm năng'],['INACTIVE','Ngừng']].map(([v,l])=><button key={v} type="button" aria-pressed={filters.status===v} onClick={()=>setFilter('status',v)}>{l}</button>)}</div>
    <select value={filters.region} onChange={e=>setFilter('region',e.target.value)} aria-label="Khu vực"><option value="">Mọi khu vực</option>{facets.regions.map(r=><option key={r.region} value={r.region}>{r.region} ({r.n})</option>)}</select>
@@ -201,11 +203,11 @@ function MasterList({entity,role,user,onSaved}){
    :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2,3].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>{query||filtered?'Không tìm thấy kết quả':'Chưa có dữ liệu'}</strong><p>{query||filtered?'Hãy thử từ khóa khác hoặc bỏ bớt bộ lọc.':'Có thể tạo bản ghi đầu tiên nếu tài khoản được cấp quyền.'}</p></div>
    :<>
-    <div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr>{cols.map(([k,label])=><th scope="col" key={k} className={COMPACT[k]==='ct-sm-hide'?'ct-sm-hide':undefined}>{label}</th>)}{(canWrite||isCustomers)&&<th scope="col">Thao tác</th>}</tr></thead>
+    <div className="ct-tablebox" role="region" aria-label={'Bảng dữ liệu '+schema.title} tabIndex={0}><table className="ct-data-table ct-compact"><thead><tr>{cols.map(([k,label])=><th scope="col" key={k} className={COMPACT[k]==='ct-sm-hide'?'ct-sm-hide':undefined}>{label}</th>)}{(canWrite||isCustomers)&&<th scope="col">Thao tác</th>}</tr></thead>
      <tbody>{rows.map(row=><tr key={row.id} className={isCustomers?'ct-row-link':undefined} tabIndex={isCustomers?0:undefined} onClick={isCustomers?e=>{if(!e.target.closest('button'))setViewing(row.id)}:undefined} onKeyDown={isCustomers?e=>{if(e.key==='Enter'&&e.target===e.currentTarget)setViewing(row.id)}:undefined}>
       {cols.map(([k,label])=><td key={k} data-label={label} className={COMPACT[k]||'ct-sm-hide'}>{cell(row,k)}</td>)}
       {(canWrite||isCustomers)&&<td data-label="Thao tác" className="c-action"><span className="ct-row-actions">{isCustomers&&<button className="ct-text-button" onClick={()=>setViewing(row.id)}>Xem</button>}{canWrite&&<button className="ct-text-button" onClick={()=>setEditing(row)}>Sửa</button>}</span></td>}</tr>)}</tbody></table></div>
-    <div className="ct-pagination"><span>Dòng {page*PAGE_SIZE+1}–{page*PAGE_SIZE+rows.length}{hasMore?', còn trang sau':''}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)} aria-label="Trang trước"><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)} aria-label="Trang sau">Sau <ChevronRight size={17}/></button></div></div>
+    <div className="ct-pagination" role="navigation" aria-label={'Phân trang '+schema.title}><span>Dòng {page*PAGE_SIZE+1}–{page*PAGE_SIZE+rows.length}{hasMore?', còn trang sau':''}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)} aria-label="Trang trước"><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)} aria-label="Trang sau">Sau <ChevronRight size={17}/></button></div></div>
    </>}
   {viewing&&<CustomerDetail id={viewing} user={user} statusLabel={v=>STATUS_LABEL[v]||v} onClose={()=>setViewing(null)} onChanged={onSaved} onEdit={canWrite?c=>{setViewing(null);setEditing(c)}:undefined}/>}
   {editing!==undefined&&<Modal entity={entity} role={role} initial={editing} onCancel={()=>setEditing(undefined)} onSave={save}/>}
