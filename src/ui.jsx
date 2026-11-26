@@ -32,7 +32,16 @@ export function Combobox({value,label,onChange,search,placeholder='Gõ để tì
  const box=useRef(null);
  const listId=useId();
  const seq=useRef(0);
+ const input=useRef(null);
+ const [pos,setPos]=useState(null);
  useEffect(()=>{setText(label||'')},[label]);
+ useEffect(()=>{
+  if(!open)return;
+  const place=()=>{const r=input.current?.getBoundingClientRect();if(!r)return;const below=window.innerHeight-r.bottom;const up=below<220&&r.top>below;
+   setPos({left:r.left,width:Math.max(r.width,240),...(up?{bottom:window.innerHeight-r.top+4}:{top:r.bottom+4}),maxHeight:Math.max(140,Math.min(260,(up?r.top:below)-12))})};
+  place();window.addEventListener('resize',place);window.addEventListener('scroll',place,true);
+  return()=>{window.removeEventListener('resize',place);window.removeEventListener('scroll',place,true)};
+ },[open]);
  useEffect(()=>{
   if(!open)return;
   const n=++seq.current;setLoading(true);
@@ -48,10 +57,10 @@ export function Combobox({value,label,onChange,search,placeholder='Gõ để tì
   else if(e.key==='Escape'&&open){e.preventDefault();e.stopPropagation();setOpen(false);setText(label||'')}
  };
  return <div className="ct-combo" ref={box}>
-  <input role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-label={ariaLabel} aria-invalid={invalid||undefined}
+ <input ref={input} role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-label={ariaLabel} aria-invalid={invalid||undefined}
    aria-activedescendant={open&&active>=0?listId+'-'+active:undefined} disabled={disabled} value={text} placeholder={placeholder} autoComplete="off"
    onFocus={()=>setOpen(true)} onChange={e=>{setText(e.target.value);setOpen(true);if(value)onChange('',null)}} onKeyDown={onKey}/>
-  {open&&<ul className="ct-combo-list" role="listbox" id={listId}>
+  {open&&pos&&<ul className="ct-combo-list" role="listbox" id={listId} style={pos}>
    {loading&&!items.length?<li className="ct-combo-empty">Đang tìm...</li>
     :!items.length?<li className="ct-combo-empty">Không tìm thấy. Thử từ khóa khác.</li>
     :items.map((it,i)=><li key={it.id} id={listId+'-'+i} role="option" aria-selected={it.id===value} className={i===active?'active':''} onMouseDown={e=>{e.preventDefault();pick(it)}} onMouseEnter={()=>setActive(i)}>

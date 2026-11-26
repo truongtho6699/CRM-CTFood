@@ -55,7 +55,7 @@ export function OrderForm({initial,presetCustomer,onCancel,onSaved}){
 
    <form onSubmit={submit}>
     <div className="formgrid ct-formgrid">
-     <div className="ct-field-label">Khách hàng<span className="ct-required"> *</span>{editing||presetCustomer?<div className="ct-readonly">{customerName}</div>:<Combobox value={form.customer_id} label={customerName} disabled={busy} ariaLabel="Khách hàng" placeholder="Gõ tên hoặc số điện thoại..." search={searchCustomers} onChange={(id,it)=>{set('customer_id',id);setCustomerName(it?.label||'')}}/>}</div>
+     <div className="ct-field-label"><span>Khách hàng<span className="ct-required"> *</span></span>{editing||presetCustomer?<div className="ct-readonly">{customerName}</div>:<Combobox value={form.customer_id} label={customerName} disabled={busy} ariaLabel="Khách hàng" placeholder="Gõ tên hoặc số điện thoại..." search={searchCustomers} onChange={(id,it)=>{set('customer_id',id);setCustomerName(it?.label||'')}}/>}</div>
      <label>Loại đơn<span className="ct-required"> *</span><select required disabled={busy} value={form.order_type} onChange={e=>set('order_type',e.target.value)}>{Object.entries(TYPE).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
      <label>Thời gian dự kiến giao<input type="date" disabled={busy} value={form.expected_date} onChange={e=>set('expected_date',e.target.value)}/></label>
      <label>Địa điểm giao hàng<input disabled={busy} maxLength={300} value={form.delivery_address} onChange={e=>set('delivery_address',e.target.value)}/></label>

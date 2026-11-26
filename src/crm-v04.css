@@ -67,7 +67,7 @@ a.ct-btn{text-decoration:none}
 /* Ô chọn có tìm kiếm */
 .ct-combo{position:relative}.ct-combo input{width:100%;min-height:45px;font-size:14px}.ct-lines-table .ct-combo input{min-height:40px}
 .ct-combo input[aria-invalid="true"]{border-color:#c44235}
-.ct-combo-list{position:absolute;z-index:120;left:0;right:0;top:calc(100% + 4px);max-height:260px;overflow:auto;margin:0;padding:4px;list-style:none;background:#fff;border:1px solid #cfdde2;border-radius:10px;box-shadow:0 12px 30px #0f2f3a26;min-width:240px}
+.ct-combo-list{position:fixed;z-index:200;overflow:auto;margin:0;padding:4px;list-style:none;background:#fff;border:1px solid #cfdde2;border-radius:10px;box-shadow:0 12px 30px #0f2f3a26;min-width:240px}
 .ct-combo-list li{padding:8px 10px;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;gap:2px;font-size:14px}.ct-combo-list li small{font-size:12px;color:#647d86}
 .ct-combo-list li.active,.ct-combo-list li[aria-selected="true"]{background:#e9f6f1}.ct-combo-empty{color:#647d86;cursor:default!important}
 .ct-field-label{font-size:14px;display:flex;flex-direction:column;gap:6px}.ct-readonly{min-height:45px;display:flex;align-items:center;padding:0 12px;border:1px solid #e3eaec;border-radius:9px;background:#f5f8f8;font-weight:600}
