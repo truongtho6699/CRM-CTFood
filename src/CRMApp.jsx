@@ -1,6 +1,6 @@
 import React,{useEffect,useId,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {LayoutDashboard,Users,UserPlus,Package,ShoppingCart,Truck,Wallet,ChartColumn,Settings,Search,Plus,Download,RefreshCcw,Menu,X,AlertTriangle,Lock,Database,CheckCircle2,ChevronLeft,ChevronRight,LogOut,ArrowRight,Clock3,ShieldCheck,Info,UserCog} from 'lucide-react';
+import {LayoutDashboard,Users,UserPlus,Package,ShoppingCart,Truck,Wallet,ChartColumn,Settings,Search,Plus,Download,RefreshCcw,Menu,X,AlertTriangle,Lock,Database,CheckCircle2,ChevronLeft,ChevronRight,LogOut,ArrowRight,Clock3,ShieldCheck,Info,UserCog,CircleUser,KeyRound,ExternalLink} from 'lucide-react';
 import './crm-v04.css';
 import {LoginPanel} from './AuthGateway.jsx';
 import {SCHEMAS} from './data.js';
@@ -20,7 +20,18 @@ const NAV=[
 ];
 // Khớp ROLES trong worker/src/index.js.
 const ROLE_LABEL={ADMIN:'Quản trị hệ thống',BOD:'Ban Giám đốc',ACCOUNTING:'Kế toán',SALES_MANAGER:'Trưởng phòng kinh doanh',SALES:'Nhân viên kinh doanh',SALES_ADMIN:'Sale Admin',LOGISTICS:'Kho / Logistics'};
-const ADMIN_NAV={id:'users',name:'Người dùng & phân quyền',icon:UserCog};
+const ADMIN_NAV={id:'users',name:'Quản lý tài khoản',icon:UserCog};
+const ACCOUNT_NAV=[{id:'profile',name:'Thông tin tài khoản',icon:CircleUser},{id:'password',name:'Đổi mật khẩu',icon:KeyRound}];
+// Mô tả quyền theo đúng kiểm soát ở API (worker/src/index.js).
+const ROLE_SCOPE={
+ ADMIN:['Xem và sửa toàn bộ danh mục','Xem hạn mức tín dụng và giá vốn','Quản lý tài khoản và phân quyền'],
+ BOD:['Xem toàn bộ dữ liệu, gồm hạn mức tín dụng và giá vốn','Sửa khách hàng, khách tiềm năng, sản phẩm'],
+ ACCOUNTING:['Xem toàn bộ dữ liệu, gồm hạn mức tín dụng và giá vốn','Chỉ xem, không sửa danh mục'],
+ SALES_MANAGER:['Xem và sửa khách hàng, khách tiềm năng, sản phẩm của mọi Sales','Không xem hạn mức tín dụng và giá vốn'],
+ SALES:['Chỉ xem và sửa khách hàng, khách tiềm năng do mình phụ trách','Xem danh mục sản phẩm, không sửa','Không xem hạn mức tín dụng và giá vốn'],
+ SALES_ADMIN:['Xem và sửa khách hàng, khách tiềm năng, sản phẩm','Không xem hạn mức tín dụng và giá vốn'],
+ LOGISTICS:['Xem khách hàng, sản phẩm, container (không có giá vốn)','Không xem khách tiềm năng và phiếu thu','Chỉ xem, không sửa danh mục'],
+};
 const ROLE_WRITE=new Set(['ADMIN','BOD','SALES_MANAGER','SALES_ADMIN']);
 const PAGE_SIZE=25;
 // Mã chuẩn trong D1 -> nhãn hiển thị (khớp CUSTOMER_STATUS / LEAD_STAGE trong worker).
@@ -28,7 +39,7 @@ const STATUS_LABEL={ACTIVE:'Đang giao dịch',PROSPECT:'Tiềm năng',INACTIVE:
 const STAGE_LABEL={NEW:'Mới',CONTACTING:'Đang liên hệ',QUOTED:'Đã báo giá',CONVERTED:'Chuyển đổi',REJECTED:'Không phù hợp'};
 const getRoute=()=>{
  const page=(window.location.hash||'#/dashboard').replace(/^#\/?/,'').split('?')[0];
- return [...NAV,ADMIN_NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
+ return [...NAV,...ACCOUNT_NAV,ADMIN_NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
 };
 const toText=x=>String(x??'');
 function safeCSV(data,label){
@@ -238,7 +249,7 @@ function UsersAdmin({self}){
  const shown=q?rows.filter(r=>(r.email+' '+r.full_name+' '+(ROLE_LABEL[r.role]||r.role)).toLowerCase().includes(q)):rows;
  const fmt=v=>{if(!v)return '—';const d=new Date(v.includes('T')?v:v.replace(' ','T')+'Z');return isNaN(d)?v:new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(d)};
  return <section className="ct-workspace">
-  <div className="ct-section-head"><div><div className="ct-overline">HỆ THỐNG · CHỈ QUẢN TRỊ</div><h2>Người dùng & phân quyền</h2><p>Tài khoản được phép dùng CRM và vai trò quyết định dữ liệu mỗi người được xem/sửa.</p></div>
+  <div className="ct-section-head"><div><div className="ct-overline">QUẢN TRỊ · CHỈ ADMIN</div><h2>Quản lý tài khoản</h2><p>Tài khoản được phép dùng CRM và vai trò quyết định dữ liệu mỗi người được xem/sửa.</p></div>
    <div className="ct-actions"><button className="ct-btn secondary" disabled={loading} onClick={load}><RefreshCcw size={17}/> Làm mới</button><button className="ct-btn primary" onClick={()=>setEditing(null)}><Plus size={17}/> Thêm tài khoản</button></div>
   </div>
   <Notice>Đăng nhập cần đủ 2 lớp: email nằm trong chính sách <strong>Cloudflare Access</strong> và tài khoản <strong>đang hoạt động</strong> ở đây. Khóa tài khoản tại đây có hiệu lực ngay với mọi API.</Notice>
@@ -250,6 +261,35 @@ function UsersAdmin({self}){
    :<div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th scope="col">Email</th><th scope="col">Họ tên</th><th scope="col">Vai trò</th><th scope="col">Trạng thái</th><th scope="col">Cập nhật</th><th scope="col">Thao tác</th></tr></thead>
     <tbody>{shown.map(r=><tr key={r.email}><td data-label="Email">{r.email}{r.email===self&&<span className="ct-you"> (bạn)</span>}</td><td data-label="Họ tên">{r.full_name}</td><td data-label="Vai trò">{ROLE_LABEL[r.role]||r.role}</td><td data-label="Trạng thái"><Status value={r.active?'Đang hoạt động':'Đã khóa'}/></td><td data-label="Cập nhật">{fmt(r.updated_at)}</td><td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setEditing(r)}>Chỉnh sửa</button></td></tr>)}</tbody></table></div>}
   {editing!==undefined&&<UserModal initial={editing} self={self} onCancel={()=>setEditing(undefined)} onSave={save}/>}
+ </section>;
+}
+const LOGOUT_URL='/cdn-cgi/access/logout?returnTo='+encodeURIComponent('https://crm-ctfood.pages.dev/login');
+function AccountProfile({user}){
+ const rows=[['Họ tên',user.full_name||'—'],['Email đăng nhập',user.email],['Vai trò',ROLE_LABEL[user.role]||user.role],['Trạng thái',<Status value={user.active?'Đang hoạt động':'Đã khóa'}/>],['Phương thức đăng nhập','Google qua Cloudflare Access']];
+ return <section className="ct-workspace">
+  <div className="ct-section-head"><div><div className="ct-overline">TÀI KHOẢN</div><h2>Thông tin tài khoản</h2><p>Thông tin do quản trị viên cấp trong CRM. Muốn đổi họ tên hoặc vai trò, liên hệ quản trị viên.</p></div>
+   <div className="ct-actions"><a className="ct-btn secondary" href={LOGOUT_URL}><LogOut size={17}/> Đăng xuất</a></div></div>
+  <div className="ct-dashboard-grid">
+   <section className="ct-panel"><div className="ct-panel-title"><div><h3>Hồ sơ</h3><p>Dữ liệu từ bảng tài khoản CRM (D1)</p></div><CircleUser size={22}/></div>
+    <div className="ct-status-list">{rows.map(([k,v])=><div key={k}><span>{k}</span><strong>{v}</strong></div>)}</div></section>
+   <section className="ct-panel"><div className="ct-panel-title"><div><h3>Quyền của bạn</h3><p>Được kiểm soát tại máy chủ, không chỉ ẩn trên giao diện</p></div><ShieldCheck size={22}/></div>
+    <div className="ct-next-list">{(ROLE_SCOPE[user.role]||[]).map(t=><div key={t}><CheckCircle2 size={16}/><span>{t}</span></div>)}</div></section>
+  </div>
+ </section>;
+}
+function AccountPassword(){
+ const link=(href,label)=><a className="ct-btn primary" href={href} target="_blank" rel="noopener noreferrer"><ExternalLink size={17}/> {label}</a>;
+ return <section className="ct-workspace">
+  <div className="ct-section-head"><div><div className="ct-overline">TÀI KHOẢN</div><h2>Đổi mật khẩu</h2><p>CT FOOD CRM đăng nhập bằng tài khoản Google, không lưu mật khẩu riêng.</p></div></div>
+  <Notice>Mật khẩu của bạn chính là mật khẩu tài khoản Google. Đổi mật khẩu tại trang bảo mật của Google; CRM không bao giờ hỏi hay lưu mật khẩu của bạn.</Notice>
+  <div className="ct-dashboard-grid">
+   <section className="ct-panel"><div className="ct-panel-title"><div><h3>Đổi mật khẩu Google</h3><p>Mở trang Google trong thẻ mới</p></div><KeyRound size={22}/></div>
+    <div className="ct-next-list"><div><span>1</span><span>Bấm nút bên dưới và đăng nhập Google nếu được hỏi.</span></div><div><span>2</span><span>Nhập mật khẩu mới và lưu.</span></div><div><span>3</span><span>Quay lại CRM, bấm Đăng xuất rồi đăng nhập lại bằng mật khẩu mới.</span></div></div>
+    <div className="ct-actions" style={{marginTop:16}}>{link('https://myaccount.google.com/signinoptions/password','Đổi mật khẩu Google')}<a className="ct-btn secondary" href={LOGOUT_URL}><LogOut size={17}/> Đăng xuất</a></div></section>
+   <section className="ct-panel"><div className="ct-panel-title"><div><h3>Tăng bảo mật</h3><p>Khuyến nghị cho mọi tài khoản dùng CRM</p></div><ShieldCheck size={22}/></div>
+    <div className="ct-next-list"><div><CheckCircle2 size={16}/><span>Bật xác minh 2 bước để tránh lộ dữ liệu khách hàng khi mất mật khẩu.</span></div><div><CheckCircle2 size={16}/><span>Không dùng chung tài khoản Google giữa nhiều nhân viên.</span></div></div>
+    <div className="ct-actions" style={{marginTop:16}}><a className="ct-btn secondary" href="https://myaccount.google.com/signinoptions/two-step-verification" target="_blank" rel="noopener noreferrer"><ExternalLink size={17}/> Xác minh 2 bước</a></div></section>
+  </div>
  </section>;
 }
 function Dashboard({summary,loading,error,onRetry,onNavigate,updatedAt}){
@@ -308,23 +348,29 @@ function CRMApp(){
  useEffect(()=>{if(auth.status==='online')loadSummary()},[auth.status]);
  if(auth.status!=='online')return <LoginPanel error={auth.error} loading={auth.status==='loading'} onRetry={authenticate}/>;
  const isAdmin=auth.user.role==='ADMIN';
- const permittedNav=[...NAV.filter(item=>item.id!=='leads'||auth.user.role!=='LOGISTICS'),...(isAdmin?[ADMIN_NAV]:[])];
+ const permittedNav=NAV.filter(item=>item.id!=='leads'||auth.user.role!=='LOGISTICS');
+ const adminNav=isAdmin?[ADMIN_NAV]:[];
  const selectedPage=(route==='leads'&&auth.user.role==='LOGISTICS')||(route==='users'&&!isAdmin)?'dashboard':route;
- const current=[...permittedNav,...LOCKED].find(x=>x.id===selectedPage)||permittedNav[0];
+ const current=[...permittedNav,...ACCOUNT_NAV,...adminNav,...LOCKED].find(x=>x.id===selectedPage)||permittedNav[0];
+ const navButton=(item,extra)=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(extra||'')+(route===item.id?' active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{extra==='pending'&&<Lock size={14}/>}{item.id==='dashboard'&&<span className="ct-nav-arrow">●</span>}</button>};
  const Icon=current.icon;
  return <div className="ct-shell">
   <aside className={'ct-sidebar '+(drawer?'open':'')} aria-label="Điều hướng chính">
    <div className="ct-brand"><span className="ct-logo">CT</span><div><strong>CT FOOD</strong><small>CRM MANAGEMENT</small></div><button className="ct-icon-button ct-mobile-close" onClick={()=>setDrawer(false)} aria-label="Đóng menu"><X size={19}/></button></div>
-   <nav className="ct-nav"><div className="ct-nav-label">DỮ LIỆU ĐÃ KẾT NỐI</div>{permittedNav.map(item=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(route===item.id?'active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{item.id==='dashboard'&&<span className="ct-nav-arrow">●</span>}</button>})}
-    <div className="ct-nav-label ct-nav-label-next">CHƯA NGHIỆM THU</div>{LOCKED.map(item=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item pending '+(route===item.id?'active':'')} onClick={()=>changePage(item.id)}><ItemIcon size={19}/><span>{item.name}</span><Lock size={14}/></button>})}</nav>
+   <nav className="ct-nav"><div className="ct-nav-label">DỮ LIỆU ĐÃ KẾT NỐI</div>{permittedNav.map(item=>navButton(item))}
+    <div className="ct-nav-label ct-nav-label-next">TÀI KHOẢN</div>{ACCOUNT_NAV.map(item=>navButton(item))}
+    {isAdmin&&<><div className="ct-nav-label ct-nav-label-next">QUẢN TRỊ</div>{adminNav.map(item=>navButton(item))}</>}
+    <div className="ct-nav-label ct-nav-label-next">CHƯA NGHIỆM THU</div>{LOCKED.map(item=>navButton(item,'pending'))}</nav>
    <div className="ct-sidebar-footer"><span className="ct-online-dot"/> CT FOOD V0.4 · D1</div>
   </aside>
   {drawer&&<button className="ct-drawer-overlay" aria-label="Đóng menu" onClick={()=>setDrawer(false)}/>}
   <div className="ct-main">
-   <header className="ct-header"><div className="ct-header-left"><button className="ct-icon-button ct-menu-button" onClick={()=>setDrawer(true)} aria-label="Mở menu"><Menu size={22}/></button><div className="ct-breadcrumb"><small>CT FOOD / {current.name}</small><h1><Icon size={20}/>{current.name}</h1></div></div><div className="ct-header-right"><span className="ct-connected"><span/> D1 ĐANG KẾT NỐI</span><div className="ct-user"><strong>{auth.user.full_name||'Người dùng CRM'}</strong><small>{ROLE_LABEL[auth.user.role]||auth.user.role}</small></div><a className="ct-logout" href={"/cdn-cgi/access/logout?returnTo="+encodeURIComponent("https://crm-ctfood.pages.dev/login")} title="Đăng xuất Cloudflare Access" aria-label="Đăng xuất"><LogOut size={19}/></a></div></header>
+   <header className="ct-header"><div className="ct-header-left"><button className="ct-icon-button ct-menu-button" onClick={()=>setDrawer(true)} aria-label="Mở menu"><Menu size={22}/></button><div className="ct-breadcrumb"><small>CT FOOD / {current.name}</small><h1><Icon size={20}/>{current.name}</h1></div></div><div className="ct-header-right"><span className="ct-connected"><span/> D1 ĐANG KẾT NỐI</span><div className="ct-user" role="button" tabIndex={0} title="Thông tin tài khoản" style={{cursor:'pointer'}} onClick={()=>changePage('profile')} onKeyDown={e=>{if(e.key==='Enter')changePage('profile')}}><strong>{auth.user.full_name||'Người dùng CRM'}</strong><small>{ROLE_LABEL[auth.user.role]||auth.user.role}</small></div><a className="ct-logout" href={"/cdn-cgi/access/logout?returnTo="+encodeURIComponent("https://crm-ctfood.pages.dev/login")} title="Đăng xuất Cloudflare Access" aria-label="Đăng xuất"><LogOut size={19}/></a></div></header>
    <main className="ct-content"><div className="ct-live-info"><ShieldCheck size={16}/><span>Dữ liệu danh mục từ D1 · Đăng nhập: {auth.user.email} · Đơn hàng, giao nhận và công nợ chưa mở ghi thực tế</span></div>
     {selectedPage==='dashboard'?<Dashboard summary={summary} loading={stats.loading} error={stats.error} onRetry={loadSummary} onNavigate={changePage} updatedAt={updatedAt}/>
      :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
+     :selectedPage==='profile'?<AccountProfile user={auth.user}/>
+     :selectedPage==='password'?<AccountPassword/>
      :LIVE.includes(selectedPage)?<MasterList key={selectedPage} entity={selectedPage} role={auth.user.role} onSaved={loadSummary}/>
      :<Pending page={selectedPage}/>}
     <footer className="ct-footer">CT FOOD CRM V0.4 · Dữ liệu D1 có xác thực · Chưa nghiệm thu các phân hệ tài chính</footer>
