@@ -21,8 +21,8 @@ function isoDate(v,label){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)||Number.isNaN(Date.parse(s+'T00:00:00Z')))throw fail(label+' không hợp lệ (YYYY-MM-DD)');
  return s;
 }
-function todayVN(){return new Date(Date.now()+7*3600*1000).toISOString().slice(0,10)}
-function addDays(d,n){return new Date(Date.parse(d+'T00:00:00Z')+n*DAY).toISOString().slice(0,10)}
+export function todayVN(){return new Date(Date.now()+7*3600*1000).toISOString().slice(0,10)}
+export function addDays(d,n){return new Date(Date.parse(d+'T00:00:00Z')+n*DAY).toISOString().slice(0,10)}
 function likeOf(q){return '%'+q.replace(/[\\%_]/g,c=>'\\'+c)+'%'}
 function dbError(e){
  const msg=String(e?.message||'');
@@ -58,7 +58,7 @@ export async function receivableRows(env,user,{customerId,salesEmail}={}){
    delivered_value:delivered,paid,balance,last_delivery:r.last_delivery,due_date:balance>0?due:null,overdue_days:overdue};
  }).filter(r=>r.delivered_value>0||r.paid>0);
 }
-async function customerCredit(env,user,customerId){
+export async function customerCredit(env,user,customerId){
  const where=["p.status='ACTIVE'"],bind=[];
  if(isSales(user)){where.push('c.owner_email=?');bind.push(user.email)}
  if(customerId){where.push('p.customer_id=?');bind.push(customerId)}

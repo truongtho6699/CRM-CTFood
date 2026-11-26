@@ -39,3 +39,74 @@ a.ct-btn{text-decoration:none}
 .ct-kpis.ct-kpis-5{grid-template-columns:repeat(5,minmax(0,1fr));margin:0 0 18px}.ct-kpi-static{min-height:118px;cursor:default}.ct-kpi-static .ct-kpi-value{font-size:22px;margin:10px 0 6px;word-break:break-word}.ct-kpi-static.warn .ct-kpi-value{color:#9a6a00}.ct-kpi-static.bad .ct-kpi-value{color:#a63b35}
 .ct-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.ct-month{display:flex;flex-direction:column;font-size:11px;color:#55707b;gap:3px}.ct-month input{min-height:40px;border:1px solid #cddde2;border-radius:8px;padding:6px 8px;font:inherit;font-size:13px}
 @media(max-width:1100px){.ct-kpis.ct-kpis-5{grid-template-columns:repeat(2,minmax(0,1fr))}.ct-report-grid{grid-template-columns:1fr}}
+.ct-report-grid .ct-data-table{min-width:0}.ct-report-grid .ct-data-table th,.ct-report-grid .ct-data-table td{padding:10px 9px}
+/* Bước 1 UI/UX: menu tài khoản, ghi chú thử nghiệm gọn, thẻ gọn trên điện thoại */
+.ct-usermenu{position:relative}.ct-user{display:flex;align-items:center;gap:10px;border:1px solid transparent;background:transparent;border-radius:10px;padding:5px 8px;text-align:left;cursor:pointer;color:inherit;font:inherit}.ct-user:hover,.ct-user[aria-expanded="true"]{background:#f0f6f6;border-color:#dbe7e9}
+.ct-user-text strong{display:block;font-size:13px}.ct-user-text small{font-size:11px;color:#597783}.ct-avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#0e806b;color:#fff;font-weight:700;font-size:14px;flex-shrink:0}
+.ct-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:230px;background:#fff;border:1px solid #dbe5e9;border-radius:12px;box-shadow:0 12px 32px #0f2f3a24;padding:6px;z-index:60}
+.ct-menu-email{font-size:12px;color:#607b85;padding:8px 10px 10px;border-bottom:1px solid #edf1f3;margin-bottom:4px;overflow-wrap:anywhere}
+.ct-menu button,.ct-menu a{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:8px 10px;border:0;background:transparent;border-radius:8px;font:inherit;font-size:14px;color:#1f3d48;text-decoration:none;cursor:pointer}.ct-menu button:hover,.ct-menu a:hover{background:#eef7f4}
+.ct-trial{margin:0 0 16px;border:1px solid #ecdcb0;background:#fffaf0;border-radius:10px;font-size:13px;color:#5f4b14}.ct-trial summary{cursor:pointer;padding:9px 13px;font-weight:650;list-style:none;display:flex;align-items:center;gap:8px}.ct-trial summary::-webkit-details-marker{display:none}.ct-trial summary::before{content:"";width:8px;height:8px;border-radius:50%;background:#c99a1a}.ct-trial[open] summary{border-bottom:1px solid #f1e4c2}.ct-trial p{margin:0;padding:10px 13px 12px;line-height:1.55}
+@media(max-width:760px){
+ .ct-data-table td::before{text-align:left!important}
+ .ct-data-table .ct-sm-hide{display:none!important}
+ .ct-data-table td[data-label="Thao tác"]::before{display:none}
+ .ct-data-table td[data-label="Thao tác"]{padding-top:8px}
+ .ct-data-table td[data-label="Thao tác"]>.ct-text-button{width:100%}
+ .ct-data-table td{padding:7px 0}
+ .ct-section-head p{display:none}
+ .ct-section-head h2{margin-bottom:0}
+ .ct-user-text{display:none}.ct-user{padding:4px}
+ .ct-content{padding:16px 12px}
+}
+.ct-hint{font-size:13px;color:#4f6a75;margin:-6px 0 12px}
+/* Nhãn nhóm menu viết thường; số tiền trên thẻ không bị ngắt giữa chừng */
+.ct-nav-label{text-transform:none;letter-spacing:0;font-size:12px;font-weight:600;color:#9fb6bd}.ct-brand small{letter-spacing:0}
+.ct-kpi-static .ct-kpi-value{word-break:normal;overflow-wrap:normal;white-space:nowrap;font-size:clamp(16px,1.55vw,22px);font-variant-numeric:tabular-nums}
+@media(max-width:760px){.ct-kpis.ct-kpis-5{grid-template-columns:1fr 1fr;gap:10px}.ct-kpi-static{min-height:0;padding:14px}.ct-kpi-static .ct-kpi-value{font-size:17px}}
+/* Ô chọn có tìm kiếm */
+.ct-combo{position:relative}.ct-combo input{width:100%;min-height:45px;font-size:14px}.ct-lines-table .ct-combo input{min-height:40px}
+.ct-combo input[aria-invalid="true"]{border-color:#c44235}
+.ct-combo-list{position:fixed;z-index:200;overflow:auto;margin:0;padding:4px;list-style:none;background:#fff;border:1px solid #cfdde2;border-radius:10px;box-shadow:0 12px 30px #0f2f3a26;min-width:240px}
+.ct-combo-list li{padding:8px 10px;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;gap:2px;font-size:14px}.ct-combo-list li small{font-size:12px;color:#647d86}
+.ct-combo-list li.active,.ct-combo-list li[aria-selected="true"]{background:#e9f6f1}.ct-combo-empty{color:#647d86;cursor:default!important}
+.ct-field-label{font-size:14px;display:flex;flex-direction:column;gap:6px}.ct-readonly{min-height:45px;display:flex;align-items:center;padding:0 12px;border:1px solid #e3eaec;border-radius:9px;background:#f5f8f8;font-weight:600}
+/* Danh sách gọn trên điện thoại: dòng 1 = tên + số tiền, dòng 2 = mã/ngày + trạng thái; chạm cả dòng để mở */
+.ct-row-link{cursor:pointer}.ct-row-link:focus-visible{outline:3px solid #1689b6;outline-offset:-3px}
+@media(max-width:760px){
+ .ct-compact tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:4px;padding:12px 14px;margin-bottom:8px}
+ .ct-compact td{display:block;border:0;padding:0;min-width:0}
+ .ct-compact td::before{display:none}
+ .ct-compact td.c-title{grid-row:1;grid-column:1;font-weight:700;font-size:15px;color:#173443}
+ .ct-compact td.c-value{grid-row:1;grid-column:2;text-align:right!important;font-weight:700;font-size:15px}
+ .ct-compact td.c-sub{grid-row:2;grid-column:1;color:#5b7480;font-size:12px}
+ .ct-compact td.c-badge{grid-row:2;grid-column:2;justify-self:end}
+ .ct-compact td.c-action,.ct-compact .ct-sm-hide{display:none!important}
+ .ct-compact tr:not(.ct-row-link) td.c-action{display:block!important;grid-column:1/-1;grid-row:3}
+}
+/* Chi tiết khách hàng */
+.ct-customer-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:8px;font-size:13px;color:#4f6a75}.ct-customer-meta span{display:inline-flex;align-items:center;gap:5px}.ct-customer-meta a{color:#0b6f5b}
+.ct-customer-actions{margin:0 0 16px}
+.ct-stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}.ct-stat-row>div{border:1px solid #e3eaec;border-radius:10px;padding:10px 12px}.ct-stat-row span{display:block;font-size:12px;color:#5b7480}.ct-stat-row strong{font-size:16px;font-variant-numeric:tabular-nums}.ct-stat-row .bad strong{color:#a63b35}
+.ct-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 16px;margin:0 0 16px}.ct-facts dt{font-size:12px;color:#5b7480}.ct-facts dd{margin:2px 0 0;font-size:14px;overflow-wrap:anywhere}
+.ct-tabpanel{margin-top:14px;min-height:120px}.ct-subhead{margin:18px 0 8px;font-size:14px}
+.ct-item-list{list-style:none;margin:0;padding:0;border:1px solid #e3eaec;border-radius:10px;overflow:hidden}.ct-item-list li+li{border-top:1px solid #edf1f3}
+.ct-item-list button,.ct-item-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;width:100%;padding:11px 14px;border:0;background:#fff;text-align:left;font:inherit;color:inherit}.ct-item-list button{cursor:pointer}.ct-item-list button:hover{background:#f6fbf9}
+.ct-item-main,.ct-item-side{display:flex;flex-direction:column;gap:2px;min-width:0}.ct-item-side{text-align:right}.ct-item-main small,.ct-item-side small{font-size:12px;color:#5b7480}.ct-item-side strong{font-variant-numeric:tabular-nums}
+.ct-activity-form{display:grid;grid-template-columns:minmax(0,1fr) 160px auto;gap:8px;margin-bottom:12px}.ct-activity-form input{min-height:43px;border:1px solid #cddde2;border-radius:9px;padding:8px 10px;font:inherit;font-size:14px}
+.ct-activity-list{list-style:none;margin:0;padding:0}.ct-activity-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #edf1f3}.ct-activity-list li div{display:flex;flex-direction:column;gap:2px}.ct-activity-list small{font-size:12px;color:#5b7480}.ct-activity-list li.done strong{color:#7b8f96;text-decoration:line-through}
+@media(max-width:760px){.ct-facts{grid-template-columns:1fr}.ct-activity-form{grid-template-columns:1fr}.ct-item-list button,.ct-item-row{grid-template-columns:minmax(0,1fr) auto}.ct-item-list .ct-tag{grid-column:1/-1;justify-self:start}}
+/* Việc cần làm */
+.ct-task-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px}
+.ct-task{background:#fff;border:1px solid var(--ct-line);border-left:4px solid #9cc9bb;border-radius:12px;padding:16px 18px}
+.ct-task.warn{border-left-color:#d6a21e}.ct-task.bad{border-left-color:#c44235}.ct-task.clear{border-left-color:#cfdde2}
+.ct-task header{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.ct-task h3{font-size:15px;margin:0}
+.ct-link{border:0;background:transparent;color:#0b6f5b;font:inherit;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:4px;white-space:nowrap}.ct-link:hover{text-decoration:underline}
+.ct-task-count{margin:10px 0 4px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}.ct-task-count strong{font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}.ct-task-count span{color:#4f6a75;font-size:14px}
+.ct-task-clear{display:inline-flex!important;align-items:center;gap:6px;color:#126c4f!important;font-weight:600}
+.ct-task-note{margin:0 0 8px;font-size:13px;color:#4f6a75;line-height:1.5}
+.ct-task ul{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid #edf1f3}.ct-task li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #f1f4f5;font-size:13px}.ct-task li span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ct-task li span:last-child{color:#4f6a75;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ct-quick-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}.ct-quick-links button{border:1px solid #dbe5e9;background:#fff;border-radius:20px;padding:8px 14px;font:inherit;font-size:13px;color:#2c4a55;cursor:pointer}.ct-quick-links button:hover{background:#f0f8f7}
+@media(max-width:760px){.ct-task-grid{grid-template-columns:1fr}.ct-task-count strong{font-size:24px}}
+.ct-task{min-width:0;overflow:hidden}.ct-task header{flex-wrap:wrap}.ct-task li span:last-child{flex-shrink:0;max-width:55%;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:760px){.ct-task-grid{grid-template-columns:minmax(0,1fr)}.ct-dashboard-title{flex-wrap:wrap}}

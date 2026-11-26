@@ -172,3 +172,28 @@ Phiên ADMIN thật trên https://crm-ctfood.pages.dev sau khi merge PR #3–#6 
 | — Hoa hồng | Σ kg đã xác nhận × CK/hoa hồng đ/kg nhập trên dòng đơn; **chưa trừ vào lãi** (F02 chưa chốt) | `salesReport` |
 
 **Chưa làm:** VAT (C05), hoàn cọc/chuyển cọc/thanh toán thừa (E04), hạn mức tín dụng chặn đơn (E05), đối soát ngân hàng/nhắc nợ (E06), hóa đơn, giá vốn/lợi nhuận (F01–F05), trả hàng điều chỉnh doanh số (G03), kết nối hệ thống KPI hiện hành (A03).
+
+## 12. UAT THU TIỀN & CÔNG NỢ, BÁO CÁO & KPI TRÊN PRODUCTION — 26/11/2026
+
+| Kịch bản | Kết quả | Bằng chứng |
+| --- | --- | --- |
+| Công nợ từ phiếu cân đã xác nhận | ✅ | DEMO-DH01: 26.950,5 kg × 73.500 = 1.980.861.750 đ; hạn 26/12/2026 (giao 26/11 + 30 ngày) |
+| Lập phiếu thu 500.000.000 đ, phân bổ 400.000.000 đ | ✅ | Đã phân bổ 400 tr, chưa phân bổ 100 tr |
+| Sửa phân bổ (500 tr → 450 tr) | ✅ | Đã thu 450 tr, còn phải thu 1.530.861.750 đ, tiền chưa phân bổ 50 tr |
+| Báo cáo KPI tháng 11 | ✅ | Sản lượng 26.950,5 kg; doanh thu 1.980.861.750 đ; CK/HH 13.475.250 đ (= 26.950,5 × 500) |
+| Lỗi phát hiện | ❌→✅ | Trang trắng khi lưu phiếu rồi chuyển tab "Công nợ theo đơn" (đọc dữ liệu null) — sửa ở PR #9; bảng báo cáo phải cuộn ngang — sửa ở PR #9 |
+
+Dữ liệu thử nằm trên khách DEMO, sẽ được `demo_cleanup.sql` dọn.
+
+## 13. CẢI THIỆN GIAO DIỆN (UI/UX) — 26/11/2026
+
+Đánh giá theo skill frontend-design (máy tính 1440px và điện thoại 390px), làm 2 bước:
+
+| Bước | Nội dung | PR |
+| --- | --- | --- |
+| 1 | Sửa lỗi nhãn lệch trên điện thoại; bỏ thuật ngữ kỹ thuật (D1, Cloudflare, Lưu đồ, mã câu hỏi); gọn thông báo; tên nút cụ thể; menu tài khoản ở góc phải; bỏ nhãn viết HOA; ẩn mã UUID | #10 |
+| 2 | Tổng quan "Việc cần làm" theo vai trò; trang chi tiết khách hàng (đơn hàng, công nợ, phiếu thu, chăm sóc; tạo đơn/lập phiếu thu/thêm việc tại chỗ); ô chọn khách hàng và sản phẩm có gõ tìm; danh sách 2 dòng trên điện thoại cho đơn hàng, khách hàng, công nợ, phiếu thu | #11 |
+
+API mới ở bước 2: `/api/worklist`, `/api/customers/:id/overview`, `/api/activities` (tạo, đánh dấu xong) — có test phạm vi vai trò (`tests/workspace-api.test.mjs`).
+
+**Còn lại (bước 3):** thanh tiến trình Đặt → Giao → Thu trên đơn hàng; tìm kiếm không phân biệt hoa thường với chữ có dấu (SQLite chỉ không phân biệt với chữ không dấu); lọc/sắp xếp danh sách khách hàng theo trạng thái, khu vực, Sales.
