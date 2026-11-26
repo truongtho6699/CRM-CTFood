@@ -424,3 +424,12 @@ Yêu cầu: màn hình đăng nhập CT FOOD có **tên đăng nhập / mật kh
 - Hạn chế quan trọng: `/login` hiện là trang để người dùng bắt đầu đăng nhập. Khi truy cập `/` trực tiếp, Access vẫn chặn trước khi trang React có thể tải. **Không được tuyên bố user/password đăng nhập thành công**.
 - Muốn user/password thật và chuyển màn đăng nhập tùy chỉnh thành điểm truy cập mặc định, cần kiến trúc có IdP username/password hoặc cổng auth độc lập với password hashing, chống brute force, cookie HttpOnly, quản lý phiên và kiểm chứng API trong môi trường thử, sau đó thay đổi chính sách Access có kế hoạch rollback. Không vô hiệu hóa Access hiện tại để chỉ thay giao diện.
 
+
+
+## 23. Snapshot tiến độ hiện tại — 26/11/2026
+
+Đã lập báo cáo trạng thái được đối chiếu trực tiếp với GitHub, Cloudflare Access/Pages và D1 tại **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**. Dùng file này làm **nguồn trạng thái mới nhất** để tiếp tục triển khai; các mục 12–22 của tài liệu hiện tại là ghi chép theo thời điểm, không được coi là trạng thái hiện tại khi có thay đổi.
+
+**Điểm mới cần ghi nhớ:** production deploy success commit `64fc8727d5ef47136f10138a796b33c993c87f18`; Access cho CRM chỉ chọn Google (Cloudflare email OTP đã bỏ khỏi CRM); trang `/login` hiển thị User/Password (chưa hoạt động) và Google; D1 có 4 tài khoản, 12 khách hàng DEMO, 8 lead DEMO, 10 sản phẩm DEMO, 3 hoạt động DEMO và `audit_log=0`; chưa có giao dịch đơn/giao/thu thực; **chưa có bằng chứng UAT Google→CRUD qua trình duyệt** và chưa phát triển import lịch sử theo template nguồn.
+
+Báo cáo này là cập nhật tài liệu בלבד, không sửa dữ liệu D1, Access hay code nghiệp vụ.
