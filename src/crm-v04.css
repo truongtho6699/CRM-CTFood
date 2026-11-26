@@ -170,3 +170,55 @@ a.ct-btn{text-decoration:none}
 .ct-import-ok,.ct-import-bad{display:inline-flex;gap:6px;align-items:center;font-size:12px}
 .ct-import-ok{color:#087a65}.ct-import-bad{color:#bd392f}
 @media(max-width:850px){.ct-import-grid{grid-template-columns:1fr}.ct-import-panel{padding:15px}}
+
+
+/* UI/UX Phase 1 — readability, focus visibility, mobile ergonomics.
+   Additive overrides: preserve V0.4 brand and all business logic. */
+:root{font-synthesis:none}
+.ct-content{overflow-wrap:anywhere}
+.ct-workspace,.ct-panel,.ct-import-panel{min-width:0}
+.ct-dashboard-title p,.ct-section-head p,.ct-empty p,.ct-notice{line-height:1.6}
+.ct-nav-parent{cursor:pointer}
+.ct-nav-parent:focus-visible,.ct-nav-item:focus-visible,.ct-btn:focus-visible,.ct-text-button:focus-visible,.ct-icon-button:focus-visible,.ct-user:focus-visible,.ct-link:focus-visible,.ct-catalog-card:focus-visible,.ct-import-check:focus-within{outline:3px solid #64c9ec;outline-offset:2px}
+.ct-nav-submenu .ct-nav-item{min-height:44px}
+.ct-tablebox:focus-visible{outline:3px solid #1689b6;outline-offset:3px}
+.ct-tablebox[tabindex="0"]{scrollbar-gutter:stable}
+.ct-notice{align-items:flex-start;flex-wrap:wrap}
+.ct-notice .ct-text-button{min-height:36px}
+.ct-modal input,.ct-modal textarea,.ct-modal select,.ct-import-field input,.ct-import-field select{font-size:16px}
+.ct-import-panel h3,.ct-section-head h2{overflow-wrap:anywhere}
+.ct-filterbar select{min-height:42px}
+.ct-seg button{min-height:42px;height:auto}
+.ct-workspace h2,.ct-dashboard-title h2{line-height:1.3}
+@media(max-width:760px){
+ .ct-content{padding:15px 12px}
+ .ct-workspace,.ct-panel{padding:16px}
+ .ct-section-head,.ct-dashboard-title{align-items:flex-start;flex-direction:column;gap:12px}
+ .ct-section-head h2,.ct-dashboard-title h2{font-size:21px}
+ .ct-section-head p{font-size:14px}
+ .ct-actions{width:100%;flex-wrap:wrap}
+ .ct-actions .ct-btn{flex:1 1 auto;min-width:0;white-space:normal}
+ .ct-btn{min-height:44px}
+ .ct-pagination{align-items:flex-start;flex-direction:column}
+ .ct-pagination>div{width:100%}
+ .ct-pagination .ct-btn{flex:1;min-height:44px}
+ .ct-import-panel{padding:15px}
+ .ct-import-actions .ct-btn{min-width:0;flex:1 1 140px}
+ .ct-modal-actions{flex-wrap:wrap}
+ .ct-modal-actions .ct-btn{min-height:44px}
+ .ct-breadcrumb{min-width:0}
+ .ct-breadcrumb small{overflow-wrap:anywhere}
+ .ct-header-left{min-width:0}
+ .ct-catalog-card{min-height:150px}
+ .ct-data-table{font-size:13px}
+}
+@media(max-width:390px){
+ .ct-content{padding:12px 9px}
+ .ct-header{padding:10px}
+ .ct-filterbar{grid-template-columns:1fr}
+ .ct-filterbar .ct-seg{grid-column:auto}
+ .ct-filterbar select{max-width:none;width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{scroll-behavior:auto!important;animation-duration:0.01ms!important;transition-duration:0.01ms!important}
+}
