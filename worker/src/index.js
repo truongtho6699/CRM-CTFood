@@ -189,6 +189,14 @@ async function saveEntity(env,user,entity,request,method,id){
   old=await env.DB.prepare('SELECT * FROM '+entity+' WHERE id=?').bind(entityId).first();
   if(!old)return bad('Không tìm thấy bản ghi',404);
   if(user.role==='SALES' && old.owner_email!==user.email)return bad('Không có quyền sửa bản ghi này',403);
+  // Chỉnh sửa từ màn chi tiết/phiên bản cũ không được xóa ngầm cột mới của template.
+  const fields=entity==='customers'?['legacy_code','partner_type','contact_name','contact_phone','source_sales_name','email','credit_days']:entity==='products'?['legacy_code','packaging_type','conversion_kg','conversion_note']:[];
+  for(const key of fields)if(!Object.prototype.hasOwnProperty.call(payload,key))v[key]=old[key];
+  if(entity==='customers'&&!Object.prototype.hasOwnProperty.call(payload,'tax')&&!Object.prototype.hasOwnProperty.call(payload,'tax_code'))v.tax_code=old.tax_code;
+  if(entity==='customers'&&!Object.prototype.hasOwnProperty.call(payload,'address'))v.address=old.address;
+  if(entity==='customers'&&!Object.prototype.hasOwnProperty.call(payload,'phone'))v.phone=old.phone;
+  if(entity==='products'&&!Object.prototype.hasOwnProperty.call(payload,'group')&&!Object.prototype.hasOwnProperty.call(payload,'category'))v.category=old.category;
+
   if(old.updated_at!==expected)return bad('Bản ghi vừa được người khác cập nhật. Vui lòng tải lại để xem dữ liệu mới trước khi sửa.',409);
  }
  const now=new Date().toISOString();
