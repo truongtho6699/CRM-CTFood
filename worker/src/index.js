@@ -74,8 +74,8 @@ async function listEntity(env,user,entity,params){
  }else if(entity==='containers'){
   // SALES chỉ nhìn mã container, sản phẩm và tồn; không bao giờ có giá vốn trong response.
   sql=financeUser(user)
-    ?'SELECT id,product_id,import_lot,supplier,arrival_date,quantity_kg,remaining_kg,cost_per_kg,status FROM containers'
-    :'SELECT id,product_id,arrival_date,quantity_kg,remaining_kg,status FROM containers';
+    ?'SELECT id,product_id,import_lot,supplier,arrival_date,quantity_kg,remaining_kg,cost_per_kg,status,created_at FROM containers'
+    :'SELECT id,product_id,arrival_date,quantity_kg,remaining_kg,status,created_at FROM containers';
  }else if(entity==='payments'){
   sql='SELECT p.id,p.customer_id,p.amount,p.payment_date,p.payment_type,p.reference,p.created_at FROM payments p';
   if(salesFilter(user)){sql+=' WHERE EXISTS(SELECT 1 FROM customers c WHERE c.id=p.customer_id AND c.owner_email=?)';bind.push(user.email)}
@@ -93,6 +93,11 @@ async function listEntity(env,user,entity,params){
   // Tìm trên search_key (đã bỏ dấu, viết thường — migration 0008): "suon", "SƯỜN", "Sườn" đều khớp. Escape "%"/"_".
   sql+=(hasWhere?' AND ':' WHERE ')+"search_key LIKE ? ESCAPE '\\'";
   bind.push(likeFolded(q.slice(0,80)));
+ }
+ if(q&&entity==='containers'){
+  sql+=(hasWhere?' AND ':' WHERE ')+'(id LIKE ? OR product_id LIKE ?)';
+  const term='%'+q.slice(0,80).replace(/[\\%_]/g,'\\$&')+'%';
+  bind.push(term,term);
  }
  let order=(entity==='order_lines'?'l.id':entity==='deliveries'?'d.id':entity==='payments'?'p.id':'id')+' DESC';
  if(entity==='customers'){
@@ -122,6 +127,30 @@ function validated(entity,payload){
  if(entity==='products')return {name,category:trimText(payload.group??payload.category,100),origin:trimText(payload.origin,100),unit:trimText(payload.unit,25)||'kg'};
  if(entity==='leads')return {name,contact:trimText(payload.contact,100),stage:toCode(LEAD_STAGE,payload.stage,'NEW','Giai đoạn khách tiềm năng')};
  throw Object.assign(new Error('Phân hệ chưa hỗ trợ lưu D1'),{status:405});
+}
+// Container danh mục: nhập mã container theo template, gắn sản phẩm có thật.
+// Không ghi số lượng/giá vốn từ file cũ khi chưa có phiếu nhập và đối chiếu kho.
+async function createCatalogContainer(env,user,request){
+ if(!['ADMIN','BOD','SALES_MANAGER','SALES_ADMIN'].includes(user.role))return bad('Không có quyền tạo container',403);
+ const payload=await readJson(request);
+ const id=trimText(payload.id,64).toUpperCase();
+ const product_id=trimText(payload.product_id,100);
+ if(!/^[A-Z0-9][A-Z0-9_-]{3,63}$/.test(id))return bad('Mã container phải có 4-64 ký tự chữ in hoa, số, gạch nối hoặc gạch dưới.',400);
+ if(!product_id)return bad('Phải chọn sản phẩm có trong danh mục',400);
+ const product=await env.DB.prepare('SELECT id FROM products WHERE id=? AND active=1').bind(product_id).first();
+ if(!product)return bad('Sản phẩm chưa tồn tại hoặc không hoạt động',400);
+ const exists=await env.DB.prepare('SELECT id FROM containers WHERE id=?').bind(id).first();
+ if(exists)return bad('Mã container đã tồn tại',409);
+ const stmt=env.DB.prepare("INSERT INTO containers(id,product_id,quantity_kg,remaining_kg,status) VALUES(?,?,0,0,'PLANNED')").bind(id,product_id);
+ const audit=env.DB.prepare("INSERT INTO audit_log(id,actor_email,action,entity,entity_id,after_json) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),user.email,'CREATE','containers',id,JSON.stringify({id,product_id,status:'PLANNED'}));
+ try{
+  await env.DB.batch([stmt,audit]);
+  return response({ok:true,persisted:true,data:{id,product_id,status:'PLANNED'}},201);
+ }catch(e){
+  if(/UNIQUE|PRIMARY KEY/i.test(String(e?.message||'')))return bad('Mã container đã tồn tại',409);
+  console.error('Create container failure',e?.name||'Error');
+  return bad('Không tạo được container',500);
+ }
 }
 async function saveEntity(env,user,entity,request,method,id){
  if(!writable.has(entity))return bad('Chức năng lưu D1 của phân hệ này chưa nghiệm thu',405);
@@ -268,6 +297,7 @@ export function createWorker({getKeys=remoteKeys}={}){return{
    if(!match)return bad('Không tìm thấy API',404);
    const entity=match[1],id=match[2];
    if(request.method==='GET'&&!id)return await listEntity(env,user,entity,url.searchParams);
+   if(request.method==='POST'&&entity==='containers'&&!id)return await createCatalogContainer(env,user,request);
    if((request.method==='POST'&&!id)||(request.method==='PATCH'&&id))return await saveEntity(env,user,entity,request,request.method,id);
    return bad('Phương thức không hỗ trợ',405);
   }catch(error){
