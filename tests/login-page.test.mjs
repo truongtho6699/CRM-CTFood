@@ -8,18 +8,16 @@ test('public sign-in serves a self-contained Vietnamese page without loading pri
  const html=await response.text();
  assert.match(html,/<html lang="vi">/);
  assert.match(html,/<h1>Đăng nhập<\/h1>/);
- assert.match(html,/Tên đăng nhập hoặc email/);
  assert.match(html,/Tiếp tục với Google/);
  assert.match(html,/https:\/\/crm-ctfood\.pages\.dev\//);
  assert.doesNotMatch(html,/<script\b|<form\b|\/api\//i);
- assert.doesNotMatch(html,/type=["']password["'][^>]*\s(?!disabled)(?:required|autofocus)\b/i);
+ assert.doesNotMatch(html,/<input\b|type=["']password["']/i);
 });
 
-test('user-password fields remain disabled until a real backend authenticator is approved',async()=>{
+test('only Google is shown; no password controls or outdated warnings',async()=>{
  const html=await onRequestGet().text();
- assert.match(html,/<input[^>]*autocomplete="username"[^>]*disabled/);
- assert.match(html,/<input[^>]*autocomplete="current-password"[^>]*disabled/);
- assert.match(html,/<button[^>]*class="btn password"[^>]*disabled/);
+ assert.doesNotMatch(html,/<input\\b|class="btn password"|Chưa kích hoạt|Tên đăng nhập hoặc email/i);
+ assert.match(html,/Chỉ dành cho tài khoản được cấp quyền/);
 });
 
 test('public sign-in uses restrictive security headers',()=>{
