@@ -398,8 +398,8 @@ function CRMApp(){
  return <div className="ct-shell">
   <aside className={'ct-sidebar '+(drawer?'open':'')} aria-label="Điều hướng chính">
    <div className="ct-brand"><span className="ct-logo">CT</span><div><strong>CT FOOD</strong><small>Quản lý khách hàng</small></div><button className="ct-icon-button ct-mobile-close" onClick={()=>setDrawer(false)} aria-label="Đóng menu"><X size={19}/></button></div>
-   <nav className="ct-nav"><div className="ct-nav-label">Công việc</div>{permittedNav.map(item=>navButton(item))}
-    <button type="button" className="ct-nav-item ct-nav-parent" onClick={()=>setCatalogOpen(v=>!v)} aria-expanded={catalogOpen}><FolderOpen size={19}/><span>Danh mục nền</span><ChevronDown size={16} className={catalogOpen?'ct-chevron-open':''}/></button>
+   <nav className="ct-nav"><div className="ct-nav-label">Công việc</div>{permittedNav.filter(item=>item.id!=='catalogs').map(item=>navButton(item))}
+    <button type="button" className={"ct-nav-item ct-nav-parent"+(['catalogs','customers','products','containers'].includes(route)?" active":"")} onClick={()=>{setCatalogOpen(v=>!v);changePage('catalogs')}} aria-expanded={catalogOpen}><FolderOpen size={19}/><span>Danh mục nền</span><ChevronDown size={16} className={catalogOpen?'ct-chevron-open':''}/></button>
     {catalogOpen&&<div className="ct-nav-submenu">{CATALOG_NAV.map(item=>navButton(item))}</div>}
     {isAdmin&&<><div className="ct-nav-label ct-nav-label-next">Quản trị</div>{adminNav.map(item=>navButton(item))}</>}
     {LOCKED.length>0&&<><div className="ct-nav-label ct-nav-label-next">Chưa nghiệm thu</div>{LOCKED.map(item=>navButton(item,'pending'))}</>}</nav>
