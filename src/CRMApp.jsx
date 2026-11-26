@@ -65,9 +65,9 @@ function safeCSV(data,label){
  const link=document.createElement('a');link.href=url;link.download='CTFOOD_'+label+'_'+new Date().toISOString().slice(0,10)+'.csv';link.click();
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-function Modal({entity,initial,onCancel,onSave}){
+function Modal({entity,initial,onCancel,onSave,role}){
  const schema=SCHEMAS[entity];
- const [form,setForm]=useState(initial?{...initial,tax:initial.tax_code??initial.tax??'',group:initial.category??initial.group??'',status:STATUS_LABEL[initial.status]??initial.status,stage:STAGE_LABEL[initial.stage]??initial.stage}:{});
+ const [form,setForm]=useState(initial?{...initial,tax:initial.tax_code??initial.tax??'',group:initial.category??initial.group??'',status:STATUS_LABEL[initial.status]??initial.status,stage:STAGE_LABEL[initial.stage]??initial.stage}:entity==='customers'?{partner_type:'CUSTOMER'}:{});
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const heading=useId();
@@ -94,7 +94,7 @@ function Modal({entity,initial,onCancel,onSave}){
   document.addEventListener('keydown',onKey);
   return()=>{document.removeEventListener('keydown',onKey);priorFocus.current?.focus?.()};
  },[]);
- const fields=schema.fields.filter(([key])=>key!=='owner');
+ const fields=schema.fields.filter(([key])=>key!=='owner'&&(key!=='credit_days'||['ADMIN','BOD'].includes(role)));
  const submit=async e=>{
   e.preventDefault();if(busy)return;
   setBusy(true);setError('');
@@ -174,6 +174,8 @@ function MasterList({entity,role,user,onSaved}){
  const cols=schema.columns.filter(([key])=>key!=='owner');
  const cell=(row,key)=>{
   if(key==='tax')return toText(row.tax_code||row.tax)||'—';
+  if(key==='partner_type')return ({CUSTOMER:'Khách hàng',SUPPLIER:'Nhà cung cấp',BOTH:'Cả hai'})[row[key]]||'—';
+  if(key==='conversion_kg')return row[key]==null?'—':Number(row[key]).toLocaleString('vi-VN');
   if(key==='group')return toText(row.category||row.group)||'—';
   if(key==='status'||key==='stage')return <Status value={(key==='status'?STATUS_LABEL:STAGE_LABEL)[row[key]]||row[key]}/>;
   // UUID dài thì rút gọn (di chuột để xem đủ); mã ngắn như DEMO-KH12 hiển thị nguyên vẹn.
@@ -205,7 +207,7 @@ function MasterList({entity,role,user,onSaved}){
     <div className="ct-pagination"><span>Dòng {page*PAGE_SIZE+1}–{page*PAGE_SIZE+rows.length}{hasMore?', còn trang sau':''}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)} aria-label="Trang trước"><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)} aria-label="Trang sau">Sau <ChevronRight size={17}/></button></div></div>
    </>}
   {viewing&&<CustomerDetail id={viewing} user={user} statusLabel={v=>STATUS_LABEL[v]||v} onClose={()=>setViewing(null)} onChanged={onSaved} onEdit={canWrite?c=>{setViewing(null);setEditing(c)}:undefined}/>}
-  {editing!==undefined&&<Modal entity={entity} initial={editing} onCancel={()=>setEditing(undefined)} onSave={save}/>}
+  {editing!==undefined&&<Modal entity={entity} role={role} initial={editing} onCancel={()=>setEditing(undefined)} onSave={save}/>}
  </section>;
 }
 function UserModal({initial,self,onCancel,onSave}){
