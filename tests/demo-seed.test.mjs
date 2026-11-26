@@ -31,6 +31,8 @@ test('seed nạp đủ dữ liệu mẫu, đúng mã trạng thái, chạy lại
   assert.equal(db.prepare("SELECT status_note FROM orders WHERE id='DEMO-DH04'").get().status_note,'Khách hoãn mua sang quý sau');
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM deliveries WHERE id LIKE 'DEMO-%'"),3);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM deliveries WHERE id LIKE 'DEMO-%' AND status='VERIFIED'"),2);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM payments WHERE id LIKE 'DEMO-%'"),3);
+  assert.equal(count(db,"SELECT SUM(amount) AS n FROM payment_allocations WHERE id LIKE 'DEMO-%'"),300000000);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM customers WHERE id LIKE 'DEMO-%' AND name NOT LIKE '[DEMO]%'"),0);
   // Tài khoản mẫu không bao giờ được phép đăng nhập.
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM app_users WHERE email LIKE '%@demo.ctfood.invalid' AND active<>0"),0);
@@ -59,6 +61,8 @@ test('cleanup xoá sạch dữ liệu mẫu (kể cả nhật ký sửa) và gi�
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM orders"),0);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM order_lines"),0);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM deliveries"),0);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM payments"),0);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM payment_allocations"),0);
   for(const t of ['customers','leads','products','activities'])assert.equal(count(db,`SELECT COUNT(*) AS n FROM ${t} WHERE id LIKE 'DEMO-%'`),0,t);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM app_users WHERE email LIKE '%@demo.ctfood.invalid'"),0);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM audit_log WHERE entity_id LIKE 'DEMO-%'"),0);

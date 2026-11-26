@@ -7,6 +7,12 @@ DELETE FROM audit_log WHERE entity_id IN (
  SELECT id FROM customers WHERE substr(name,1,6)='[DEMO]'
  UNION SELECT id FROM leads WHERE substr(name,1,6)='[DEMO]'
  UNION SELECT id FROM products WHERE substr(name,1,6)='[DEMO]');
+-- Phiếu thu và phân bổ của khách DEMO / khách [DEMO] (xoá trước đơn hàng và khách hàng vì khóa ngoại).
+DELETE FROM audit_log WHERE entity='payments' AND entity_id IN (SELECT id FROM payments WHERE id LIKE 'DEMO-%' OR customer_id LIKE 'DEMO-%'
+ OR customer_id IN (SELECT id FROM customers WHERE substr(name,1,6)='[DEMO]'));
+DELETE FROM payment_allocations WHERE payment_id IN (SELECT id FROM payments WHERE id LIKE 'DEMO-%' OR customer_id LIKE 'DEMO-%'
+ OR customer_id IN (SELECT id FROM customers WHERE substr(name,1,6)='[DEMO]'));
+DELETE FROM payments WHERE id LIKE 'DEMO-%' OR customer_id LIKE 'DEMO-%' OR customer_id IN (SELECT id FROM customers WHERE substr(name,1,6)='[DEMO]');
 -- Đơn hàng của khách DEMO / khách [DEMO] (kể cả đơn tạo trên giao diện): xoá nhật ký, dòng hàng, rồi đơn.
 DELETE FROM audit_log WHERE entity='orders' AND entity_id IN (SELECT id FROM orders WHERE id LIKE 'DEMO-%' OR customer_id LIKE 'DEMO-%'
  OR customer_id IN (SELECT id FROM customers WHERE substr(name,1,6)='[DEMO]'));

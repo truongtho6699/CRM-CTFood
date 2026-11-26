@@ -4,7 +4,7 @@ import {AlertTriangle,CheckCircle2,Info} from 'lucide-react';
 export const toText=x=>String(x??'');
 export function Status({value}){
  const v=toText(value)||'Chưa xác định';
- const kind=/ngừng|INACTIVE|không phù hợp|hủy|đã khóa/i.test(v)?'bad':/đang giao dịch|ACTIVE|chuyển đổi|hoàn|đang hoạt động|thành công|^đã xác nhận/i.test(v)?'good':'neutral';
+ const kind=/ngừng|INACTIVE|không phù hợp|hủy|đã khóa|quá hạn/i.test(v)?'bad':/đang giao dịch|ACTIVE|chuyển đổi|hoàn|đang hoạt động|thành công|^đã xác nhận|đã thu đủ|trong hạn|hiệu lực|trả trước/i.test(v)?'good':'neutral';
  return <span className={'ct-tag '+kind}><span className="ct-tag-dot"/>{v}</span>;
 }
 export function Notice({type='info',children}){

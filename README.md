@@ -86,6 +86,12 @@ Tạo và theo dõi đơn nhiều dòng hàng theo tab "Lưu đồ": khách hàn
 
 Trong **Đơn hàng → Xem**, Sale Admin / Kho / Kế toán thêm phiếu cân cho từng lần giao (dòng hàng, KL cân thực tế, ngày, số phiếu, số container, biển số xe). **Kế toán xác nhận** phiếu tại trang **Giao hàng & phiếu cân** (mặc định lọc "Chờ xác nhận"). Chi tiết đơn hiển thị KL đặt, KL đã xác nhận, KL chờ và chênh lệch. Đơn chỉ chuyển "Thành công" khi có phiếu đã xác nhận và không còn phiếu chờ. Giả định tạm: `docs/PROJECT_STATUS.md` mục 9. Cần migration `0006_deliveries_workflow.sql`.
 
+## Thu tiền & công nợ, Báo cáo & KPI (thử nghiệm, FIN-01 / KPI-01)
+
+- **Thu tiền & công nợ**: Kế toán lập phiếu thu (đặt cọc / thanh toán, chuyển khoản / tiền mặt), phân bổ vào một hoặc nhiều đơn của khách, hủy phiếu có lý do. Bảng công nợ theo đơn: giá trị đã giao (kg đã xác nhận × giá chưa VAT), đã thu, còn lại, hạn thanh toán, số ngày quá hạn; tổng quan còn phải thu, quá hạn, tiền chưa phân bổ. Tiền lưu số nguyên (đồng).
+- **Báo cáo & KPI**: sản lượng, doanh thu chưa VAT, CK/hoa hồng theo Sales, tháng, sản phẩm, top khách hàng trong kỳ chọn; công nợ quá hạn theo Sales; xuất CSV. Sales chỉ thấy số liệu của mình.
+- Giả định tạm: `docs/PROJECT_STATUS.md` mục 11. Cần migration `0007_payments_receivables.sql`.
+
 ## Menu Tài khoản
 
 Mọi người dùng có nhóm menu **Tài khoản**:
