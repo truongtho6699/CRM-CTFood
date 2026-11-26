@@ -19,10 +19,10 @@ const NAV=[
  {id:'customers',name:'Khách hàng',icon:Users},
  {id:'leads',name:'Khách tiềm năng',icon:UserPlus},
  {id:'products',name:'Sản phẩm',icon:Package},
- {id:'orders',name:'Đơn hàng',icon:ShoppingCart,badge:'Thử nghiệm'},
- {id:'deliveries',name:'Giao hàng & phiếu cân',icon:Truck,badge:'Thử nghiệm'},
- {id:'payments',name:'Thu tiền & công nợ',icon:Wallet,badge:'Thử nghiệm'},
- {id:'kpi',name:'Báo cáo & KPI',icon:ChartColumn,badge:'Thử nghiệm'},
+ {id:'orders',name:'Đơn hàng',icon:ShoppingCart},
+ {id:'deliveries',name:'Giao hàng & phiếu cân',icon:Truck},
+ {id:'payments',name:'Thu tiền & công nợ',icon:Wallet},
+ {id:'kpi',name:'Báo cáo & KPI',icon:ChartColumn},
 ];
 // Khớp ROLES trong worker/src/index.js.
 const ROLE_LABEL={ADMIN:'Quản trị hệ thống',BOD:'Ban Giám đốc',ACCOUNTING:'Kế toán',SALES_MANAGER:'Trưởng phòng kinh doanh',SALES:'Nhân viên kinh doanh',SALES_ADMIN:'Sale Admin',LOGISTICS:'Kho / Logistics'};
