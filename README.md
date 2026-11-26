@@ -78,6 +78,10 @@ npx wrangler d1 execute ctfood-crm --remote --file=seeds/demo_cleanup.sql   # xo
 
 File xoá gỡ bản ghi `DEMO-…`, các bản ghi tạo trên giao diện có tên bắt đầu bằng `[DEMO]` (ví dụ `[DEMO] UAT KH 001`), và nhật ký sửa của chúng. Khi chạy UAT, hãy đặt tên bản ghi thử bắt đầu bằng `[DEMO]` để được dọn tự động.
 
+## Đơn hàng (thử nghiệm, ORDER-01)
+
+Tạo và theo dõi đơn nhiều dòng hàng theo tab "Lưu đồ": khách hàng, loại đơn (Offer / sẵn kho), ngày giao dự kiến, địa điểm, cọc dự kiến, số container, dòng hàng (sản phẩm, kg, giá chưa VAT, chiết khấu/hoa hồng đ/kg). Trạng thái: Chờ giao → Thành công (Sale Admin) hoặc Hủy (TPKD/BGĐ, bắt buộc lý do). **Chưa tính KPI và chưa ghi tiền.** Các quy tắc là giả định tạm — xem `docs/PROJECT_STATUS.md` mục 8. Cần migration `0005_orders_workflow.sql`.
+
 ## Menu Tài khoản
 
 Mọi người dùng có nhóm menu **Tài khoản**:

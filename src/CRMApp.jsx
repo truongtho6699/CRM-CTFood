@@ -4,10 +4,11 @@ import {LayoutDashboard,Users,UserPlus,Package,ShoppingCart,Truck,Wallet,ChartCo
 import './crm-v04.css';
 import {LoginPanel} from './AuthGateway.jsx';
 import {SCHEMAS} from './data.js';
+import {Status,Notice,jsonFetch,toText} from './ui.jsx';
+import {OrdersPage} from './Orders.jsx';
 
 const LIVE=['customers','leads','products'];
 const LOCKED=[
- {id:'orders',name:'Đơn hàng',icon:ShoppingCart,description:'Chưa nghiệm thu quy trình tạo đơn, nhiều dòng hàng và phê duyệt'},
  {id:'deliveries',name:'Giao hàng & phiếu cân',icon:Truck,description:'Chưa nghiệm thu dữ liệu cân thực tế và xác nhận giao'},
  {id:'payments',name:'Thu tiền & công nợ',icon:Wallet,description:'Chưa nghiệm thu phân bổ thanh toán và công nợ'},
  {id:'kpi',name:'Báo cáo & KPI',icon:ChartColumn,description:'Chưa tích hợp KPI đang vận hành; không sử dụng số liệu mẫu'},
@@ -17,6 +18,7 @@ const NAV=[
  {id:'customers',name:'Khách hàng',icon:Users},
  {id:'leads',name:'Khách tiềm năng',icon:UserPlus},
  {id:'products',name:'Sản phẩm',icon:Package},
+ {id:'orders',name:'Đơn hàng',icon:ShoppingCart,badge:'Thử nghiệm'},
 ];
 // Khớp ROLES trong worker/src/index.js.
 const ROLE_LABEL={ADMIN:'Quản trị hệ thống',BOD:'Ban Giám đốc',ACCOUNTING:'Kế toán',SALES_MANAGER:'Trưởng phòng kinh doanh',SALES:'Nhân viên kinh doanh',SALES_ADMIN:'Sale Admin',LOGISTICS:'Kho / Logistics'};
@@ -41,7 +43,6 @@ const getRoute=()=>{
  const page=(window.location.hash||'#/dashboard').replace(/^#\/?/,'').split('?')[0];
  return [...NAV,...ACCOUNT_NAV,ADMIN_NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
 };
-const toText=x=>String(x??'');
 function safeCSV(data,label){
  if(!data.length)return;
  const keys=Object.keys(data[0]).filter(k=>!['credit_limit','credit_days','cost_per_kg'].includes(k));
@@ -55,14 +56,6 @@ function safeCSV(data,label){
  const url=URL.createObjectURL(blob);
  const link=document.createElement('a');link.href=url;link.download='CTFOOD_'+label+'_'+new Date().toISOString().slice(0,10)+'.csv';link.click();
  setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
-function Status({value}){
- const v=toText(value)||'Chưa xác định';
- const kind=/ngừng|INACTIVE|không phù hợp|hủy|đã khóa/i.test(v)?'bad':/đang giao dịch|ACTIVE|chuyển đổi|hoàn|đang hoạt động/i.test(v)?'good':'neutral';
- return <span className={'ct-tag '+kind}><span className="ct-tag-dot"/>{v}</span>;
-}
-function Notice({type='info',children}){
- return <div className={'ct-notice '+type} role={type==='error'?'alert':'status'}>{type==='error'?<AlertTriangle size={18}/>:type==='success'?<CheckCircle2 size={18}/>:<Info size={18}/>}<span>{children}</span></div>;
 }
 function Modal({entity,initial,onCancel,onSave}){
  const schema=SCHEMAS[entity];
@@ -186,12 +179,6 @@ function MasterList({entity,role,onSaved}){
    </>}
   {editing!==undefined&&<Modal entity={entity} initial={editing} onCancel={()=>setEditing(undefined)} onSave={save}/>}
  </section>;
-}
-async function jsonFetch(path,options={}){
- const res=await fetch(path,{credentials:'same-origin',...options,headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});
- const data=await res.json().catch(()=>({}));
- if(!res.ok||!data.ok)throw Object.assign(Error(data.error||'Lỗi máy chủ (HTTP '+res.status+')'),{status:res.status});
- return data;
 }
 function UserModal({initial,self,onCancel,onSave}){
  const editing=Boolean(initial);
@@ -352,7 +339,7 @@ function CRMApp(){
  const adminNav=isAdmin?[ADMIN_NAV]:[];
  const selectedPage=(route==='leads'&&auth.user.role==='LOGISTICS')||(route==='users'&&!isAdmin)?'dashboard':route;
  const current=[...permittedNav,...ACCOUNT_NAV,...adminNav,...LOCKED].find(x=>x.id===selectedPage)||permittedNav[0];
- const navButton=(item,extra)=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(extra||'')+(route===item.id?' active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{extra==='pending'&&<Lock size={14}/>}{item.id==='dashboard'&&<span className="ct-nav-arrow">●</span>}</button>};
+ const navButton=(item,extra)=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(extra||'')+(route===item.id?' active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{extra==='pending'&&<Lock size={14}/>}{item.badge&&<span className="ct-nav-badge">{item.badge}</span>}{item.id==='dashboard'&&<span className="ct-nav-arrow">●</span>}</button>};
  const Icon=current.icon;
  return <div className="ct-shell">
   <aside className={'ct-sidebar '+(drawer?'open':'')} aria-label="Điều hướng chính">
@@ -369,6 +356,7 @@ function CRMApp(){
    <main className="ct-content"><div className="ct-live-info"><ShieldCheck size={16}/><span>Dữ liệu danh mục từ D1 · Đăng nhập: {auth.user.email} · Đơn hàng, giao nhận và công nợ chưa mở ghi thực tế</span></div>
     {selectedPage==='dashboard'?<Dashboard summary={summary} loading={stats.loading} error={stats.error} onRetry={loadSummary} onNavigate={changePage} updatedAt={updatedAt}/>
      :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
+     :selectedPage==='orders'?<OrdersPage user={auth.user}/>
      :selectedPage==='profile'?<AccountProfile user={auth.user}/>
      :selectedPage==='password'?<AccountPassword/>
      :LIVE.includes(selectedPage)?<MasterList key={selectedPage} entity={selectedPage} role={auth.user.role} onSaved={loadSummary}/>

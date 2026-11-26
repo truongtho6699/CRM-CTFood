@@ -48,7 +48,7 @@
 | P0 | DATA-02 | Xác nhận dữ liệu DEMO và kế hoạch trước khi nhập thật | ❌ Chưa dọn DEMO; **không chạy cleanup khi chưa sao lưu và được chủ quản phê duyệt** | DATA + quản trị |
 | P0 | DATA-03 | Module import lịch sử từ template Google Sheets/Excel | ❌ Chưa phát triển. Đã phân tích mẫu khách hàng/NCC, hàng hóa, container, giao dịch; cần staging, mapping, phát hiện trùng, duyệt, audit và rollback | BA + DATA + DEV |
 | P0 | BIZ-01 | Chốt BRD các quy tắc đơn hàng, giao thực, VAT, công nợ, giá vốn, hoa hồng, KPI | ❌ Các câu hỏi P0 trong tab `Rivew 1` còn phải chốt; **không bật ghi tài chính** | BGĐ + Sales + Kế toán |
-| P1 | ORDER-01 | CRUD đơn hàng nhiều dòng, trạng thái, giá bán và duyệt ngoại lệ | ❌ Chưa phát hành nghiệp vụ thật | BA + DEV |
+| P1 | ORDER-01 | CRUD đơn hàng nhiều dòng, trạng thái, giá bán và duyệt ngoại lệ | 🟡 Có mã + test (PR #5) theo **giả định tạm** ở mục 8: tạo/sửa đơn nhiều dòng, 3 trạng thái, Sale Admin xác nhận giao, TPKD/BGĐ hủy có lý do, audit. **Chưa tính KPI, chưa ghi tiền.** Cần migration 0005, UAT và BGĐ chốt C01–C05 | BA + DEV |
 | P1 | LOG-01 | Container, tồn kho, phiếu cân, nhiều lần giao và đối chiếu số kg thực tế | ❌ Chưa phát hành ghi vận hành thật | Kho + DEV |
 | P1 | FIN-01 | Đặt cọc, thu tiền từng phần, công nợ, đối soát, hóa đơn | ❌ Chưa phát hành ghi tài chính thật | Kế toán + DEV |
 | P1 | KPI-01 | Kết nối dashboard KPI hiện có | ❌ Chưa tích hợp; cần bảo toàn hệ thống KPI độc lập | Quản trị KPI + DATA |
@@ -110,3 +110,20 @@ Thực hiện trên https://crm-ctfood.pages.dev (bản `main` sau PR #2) bằng
 **Chưa chạy / còn lại:** UAT-12 (Origin/Content-Type — đã có test tự động, không giả lập được từ trình duyệt), UAT-13 và SEC-04 (cần tài khoản Google thật với vai trò SALES/LOGISTICS/ACCOUNTING), UAT-14 (xuất CSV có ký tự công thức — cần tải file), UAT-10 (hết phiên Access).
 
 **Lỗi phát hiện và đã sửa trong đợt này:** sau khi bị từ chối 409, bảng phía sau vẫn hiện dữ liệu cũ → nay tự tải lại danh sách; `demo_cleanup.sql` chưa dọn bản ghi `[DEMO]` tạo trên giao diện → đã bổ sung (có test).
+
+## 8. GIẢ ĐỊNH TẠM CHO PHÂN HỆ ĐƠN HÀNG (ORDER-01) — CHỜ BGĐ CHỐT
+
+Nguồn: tab "Lưu đồ" của file "2026-CTF_Hoàn thiện phần mềm". Mỗi giả định gắn câu hỏi tương ứng ở tab "Rivew 1"; khi BGĐ chốt khác, chỉ cần sửa quy tắc tương ứng.
+
+| Câu | Giả định đang áp dụng | Ở đâu trong mã |
+| --- | --- | --- |
+| C01 Mã đơn | `DH` + năm 2 số + tháng (giờ VN) + `-` + số thứ tự 4 chữ số trong tháng, ví dụ `DH2611-0001`; hệ thống tự sinh, không trùng | `worker/src/orders.js` (`codePrefix`, `nextCode`) |
+| C02 Offer + sẵn kho | Mỗi đơn **một** loại: Offer hoặc Hàng sẵn kho; một đơn nhiều dòng hàng (tối đa 50) | `validateOrder` |
+| C03 Trạng thái | 3 trạng thái theo Lưu đồ: **Chờ giao → Thành công / Hủy**; đã chốt thì không đổi lại, không sửa dòng | migration 0005 (trigger), `changeStatus` |
+| C04 Ai sửa / hủy | Sales sửa đơn của mình khi còn Chờ giao; TPKD, Sale Admin, BGĐ, ADMIN sửa mọi đơn Chờ giao. **Sale Admin (và ADMIN)** xác nhận giao thành công; **TPKD, BGĐ, ADMIN** hủy, bắt buộc ghi lý do | `WRITE`, `CAN_SUCCESS`, `CAN_CANCEL` |
+| C05 Giá & thuế | Giá bán lưu **chưa VAT**, số nguyên đ/kg; chưa áp thuế suất (vat_rate = 0) | `validateOrder`, `order_lines` |
+| — Thành tiền | KL dự kiến × giá chưa VAT (Lưu đồ mục 6); chiết khấu/hoa hồng nhập riêng theo đ/kg, không trừ vào thành tiền | `SELECT_ORDER` |
+| — Chủ đơn | Đơn thuộc Sales phụ trách khách hàng; Sales chỉ tạo đơn cho khách của mình; khách "Ngừng giao dịch" không tạo đơn được | `createOrder` |
+| C06 Cọc | Chỉ lưu **cọc dự kiến** (số tiền); cọc thực nhận thuộc phân hệ Thu tiền (FIN-01) | — |
+
+**Chưa làm trong ORDER-01 (để phân hệ sau):** giao nhiều lần và số kg thực giao (LOG-01) — hiện "Thành công" do Sale Admin xác nhận thủ công; tiền cọc/thanh toán thực (FIN-01); KPI và lợi nhuận (KPI-01).

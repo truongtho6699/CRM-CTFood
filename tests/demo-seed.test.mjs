@@ -25,6 +25,10 @@ test('seed nạp đủ dữ liệu mẫu, đúng mã trạng thái, chạy lại
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM leads WHERE id LIKE 'DEMO-%'"),8);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM products WHERE id LIKE 'DEMO-%'"),10);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM activities WHERE id LIKE 'DEMO-%'"),3);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM orders WHERE id LIKE 'DEMO-%'"),5);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM order_lines WHERE id LIKE 'DEMO-%'"),7);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM orders WHERE id LIKE 'DEMO-%' AND status='PENDING'"),3);
+  assert.equal(db.prepare("SELECT status_note FROM orders WHERE id='DEMO-DH04'").get().status_note,'Khách hoãn mua sang quý sau');
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM customers WHERE id LIKE 'DEMO-%' AND name NOT LIKE '[DEMO]%'"),0);
   // Tài khoản mẫu không bao giờ được phép đăng nhập.
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM app_users WHERE email LIKE '%@demo.ctfood.invalid' AND active<>0"),0);
@@ -35,6 +39,9 @@ test('cleanup xoá sạch dữ liệu mẫu (kể cả nhật ký sửa) và gi�
  const db=prodLike();
  try{
   db.exec(seed);
+  db.exec("INSERT INTO orders(id,code,customer_id,sales_email,order_type,status,updated_at) SELECT 'uuid-order','DH2611-0001','DEMO-KH02',owner_email,'IN_STOCK','PENDING','x' FROM customers WHERE id='DEMO-KH02'");
+  db.exec("INSERT INTO order_lines(id,order_id,product_id,contracted_kg,unit_price_ex_vat) VALUES('uuid-line','uuid-order','DEMO-SP01',10,1000)");
+  db.exec("UPDATE orders SET status='SUCCESS' WHERE id='uuid-order'");
   db.prepare("INSERT INTO audit_log(id,actor_email,action,entity,entity_id) VALUES('a1','truongtho53@gmail.com','UPDATE','customers','DEMO-KH01')").run();
   db.prepare("INSERT INTO audit_log(id,actor_email,action,entity,entity_id) VALUES('a2','truongtho53@gmail.com','UPDATE','customers','real-uuid-1')").run();
   // Bản ghi UAT tạo trên giao diện (mã UUID, tên bắt đầu [DEMO]) và một khách thật có chữ [DEMO] ở giữa tên.
@@ -45,6 +52,9 @@ test('cleanup xoá sạch dữ liệu mẫu (kể cả nhật ký sửa) và gi�
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM customers WHERE id='uuid-uat'"),0);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM audit_log WHERE id='a3'"),0);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM customers WHERE id='uuid-real2'"),1);
+  // Đơn tạo trên giao diện cho khách DEMO (mã UUID) cũng phải được dọn, kể cả đơn đã chốt.
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM orders"),0);
+  assert.equal(count(db,"SELECT COUNT(*) AS n FROM order_lines"),0);
   for(const t of ['customers','leads','products','activities'])assert.equal(count(db,`SELECT COUNT(*) AS n FROM ${t} WHERE id LIKE 'DEMO-%'`),0,t);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM app_users WHERE email LIKE '%@demo.ctfood.invalid'"),0);
   assert.equal(count(db,"SELECT COUNT(*) AS n FROM audit_log WHERE entity_id LIKE 'DEMO-%'"),0);
