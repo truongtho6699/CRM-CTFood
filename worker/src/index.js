@@ -4,14 +4,22 @@ const JSON_HEADERS={'content-type':'application/json; charset=utf-8','cache-cont
 function response(data,status=200){return new Response(JSON.stringify(data),{status,headers:JSON_HEADERS})}
 function bad(message,status=400){return response({ok:false,error:message},status)}
 function assertConfig(env){if(!env.DB||!env.CF_ACCESS_TEAM_DOMAIN||!env.CF_ACCESS_AUD)throw new Error('API chưa được cấu hình D1 / Cloudflare Access')}
-async function identity(request,env){
+// Cache JWKS per issuer across requests in the same isolate (jose handles key rotation/cooldown).
+const jwksCache=new Map();
+function remoteKeys(issuer){
+ let jwks=jwksCache.get(issuer);
+ if(!jwks){jwks=createRemoteJWKSet(new URL(issuer+'/cdn-cgi/access/certs'));jwksCache.set(issuer,jwks)}
+ return jwks;
+}
+async function identity(request,env,getKeys){
  const jwt=request.headers.get('Cf-Access-Jwt-Assertion');
  if(!jwt)throw Object.assign(new Error('Yêu cầu đăng nhập qua Cloudflare Access'),{status:401});
  const host=String(env.CF_ACCESS_TEAM_DOMAIN).replace(/^https?:\/\//,'').replace(/\/$/,'');
  if(!/^([a-z\d-]+\.)+cloudflareaccess\.com$/i.test(host))throw new Error('Cloudflare Access team domain không hợp lệ');
  const issuer='https://'+host;
- const JWKS=createRemoteJWKSet(new URL(issuer+'/cdn-cgi/access/certs'));
- const {payload}=await jwtVerify(jwt,JWKS,{issuer,audience:env.CF_ACCESS_AUD,algorithms:['RS256']});
+ let payload;
+ try{({payload}=await jwtVerify(jwt,getKeys(issuer),{issuer,audience:env.CF_ACCESS_AUD,algorithms:['RS256']}))}
+ catch{throw Object.assign(new Error('Phiên Cloudflare Access không hợp lệ hoặc đã hết hạn'),{status:401})}
  const email=typeof payload.email==='string'?payload.email.toLowerCase():null;
  if(!email)throw Object.assign(new Error('Cloudflare Access JWT thiếu email'),{status:401});
  const user=await env.DB.prepare('SELECT email,full_name,role,active FROM app_users WHERE email=?').bind(email).first();
@@ -31,6 +39,17 @@ const access={
  activities:['ADMIN','BOD','ACCOUNTING','SALES_MANAGER','SALES','SALES_ADMIN'],
  leads:['ADMIN','BOD','ACCOUNTING','SALES_MANAGER','SALES','SALES_ADMIN'],
 };
+// Mã chuẩn lưu trong D1; giao diện hiển thị nhãn tiếng Việt. API nhận cả mã lẫn nhãn.
+export const CUSTOMER_STATUS={ACTIVE:'Đang giao dịch',PROSPECT:'Tiềm năng',INACTIVE:'Ngừng giao dịch'};
+export const LEAD_STAGE={NEW:'Mới',CONTACTING:'Đang liên hệ',QUOTED:'Đã báo giá',CONVERTED:'Chuyển đổi',REJECTED:'Không phù hợp'};
+function toCode(map,value,fallback,label){
+ const v=trimText(value,50);
+ if(!v)return fallback;
+ if(Object.hasOwn(map,v.toUpperCase()))return v.toUpperCase();
+ const hit=Object.entries(map).find(([,text])=>text.toLowerCase()===v.toLowerCase());
+ if(hit)return hit[0];
+ throw Object.assign(new Error(label+' không hợp lệ'),{status:400});
+}
 const financeColumns=new Set(['cost_per_kg','cost_amount','margin','gross_profit']);
 async function listEntity(env,user,entity,params){
  if(!access[entity]||!access[entity].includes(user.role))return bad('Không có quyền truy cập phân hệ',403);
@@ -38,9 +57,9 @@ async function listEntity(env,user,entity,params){
  const offset=Math.max(0,Math.min(10000,Number(params.get('offset'))||0));
  let sql='',bind=[];
  if(entity==='customers'){
-  sql=financeUser(user) ? 'SELECT id,name,tax_code,phone,email,address,region,owner_email,credit_limit,credit_days,status,created_at FROM customers' : 'SELECT id,name,tax_code,phone,email,address,region,owner_email,status,created_at FROM customers';
+  sql=financeUser(user) ? 'SELECT id,name,tax_code,phone,email,address,region,owner_email,credit_limit,credit_days,status,created_at,updated_at FROM customers' : 'SELECT id,name,tax_code,phone,email,address,region,owner_email,status,created_at,updated_at FROM customers';
   if(salesFilter(user)){sql+=' WHERE owner_email=?';bind.push(user.email)}
- }else if(entity==='products')sql='SELECT id,name,category,origin,brand,unit,active FROM products';
+ }else if(entity==='products')sql='SELECT id,name,category,origin,brand,unit,active,updated_at FROM products';
  else if(entity==='orders'){
   sql='SELECT id,customer_id,sales_email,order_type,status,expected_date,delivery_address,note,created_at FROM orders';
   if(salesFilter(user)){sql+=' WHERE sales_email=?';bind.push(user.email)}
@@ -59,7 +78,7 @@ async function listEntity(env,user,entity,params){
   sql='SELECT p.id,p.customer_id,p.amount,p.payment_date,p.payment_type,p.reference,p.created_at FROM payments p';
   if(salesFilter(user)){sql+=' WHERE EXISTS(SELECT 1 FROM customers c WHERE c.id=p.customer_id AND c.owner_email=?)';bind.push(user.email)}
  }else if(entity==='leads'){
-  sql='SELECT id,name,contact,owner_email,stage,created_at FROM leads';
+  sql='SELECT id,name,contact,owner_email,stage,created_at,updated_at FROM leads';
   if(salesFilter(user)){sql+=' WHERE owner_email=?';bind.push(user.email)}
  }else if(entity==='activities'){
   sql='SELECT id,customer_id,title,due_date,owner_email,status FROM activities';
@@ -69,9 +88,11 @@ async function listEntity(env,user,entity,params){
  const hasWhere=/\bWHERE\b/i.test(sql);
  const q=params.get('q')?.trim();
  if(q&&['customers','products','leads'].includes(entity)){
-  const filter=entity==='leads'?'(name LIKE ? OR contact LIKE ?)':entity==='products'?'(name LIKE ? OR category LIKE ?)':'(name LIKE ? OR id LIKE ?)';
-  sql+=(hasWhere?' AND ':' WHERE ')+filter;
-  bind.push('%'+q.slice(0,80)+'%','%'+q.slice(0,80)+'%');
+  // Escape ký tự đại diện của LIKE để "%"/"_" do người dùng nhập được tìm đúng nghĩa đen.
+  const like='%'+q.slice(0,80).replace(/[\\%_]/g,c=>'\\'+c)+'%';
+  const cols=entity==='leads'?['name','contact']:entity==='products'?['name','category']:['name','phone','tax_code'];
+  sql+=(hasWhere?' AND ':' WHERE ')+'('+cols.map(c=>c+" LIKE ? ESCAPE '\\'").join(' OR ')+')';
+  bind.push(...cols.map(()=>like));
  }
  sql+=' ORDER BY '+(entity==='order_lines'?'l.id':entity==='deliveries'?'d.id':entity==='payments'?'p.id':'id')+' DESC LIMIT ? OFFSET ?';
  bind.push(limit+1,offset);
@@ -86,9 +107,9 @@ function validated(entity,payload){
  if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Object.assign(new Error('Dữ liệu không hợp lệ'),{status:400});
  const name=trimText(payload.name,220);
  if(!name)throw Object.assign(new Error('Tên không được trống'),{status:400});
- if(entity==='customers')return {name,phone:trimText(payload.phone,40),tax_code:trimText(payload.tax??payload.tax_code,35)||null,region:trimText(payload.region,100),status:trimText(payload.status,40)||'ACTIVE',address:trimText(payload.address,300)};
+ if(entity==='customers')return {name,phone:trimText(payload.phone,40),tax_code:trimText(payload.tax??payload.tax_code,35)||null,region:trimText(payload.region,100),status:toCode(CUSTOMER_STATUS,payload.status,'ACTIVE','Trạng thái khách hàng'),address:trimText(payload.address,300)};
  if(entity==='products')return {name,category:trimText(payload.group??payload.category,100),origin:trimText(payload.origin,100),unit:trimText(payload.unit,25)||'kg'};
- if(entity==='leads')return {name,contact:trimText(payload.contact,100),stage:trimText(payload.stage,50)||'Mới'};
+ if(entity==='leads')return {name,contact:trimText(payload.contact,100),stage:toCode(LEAD_STAGE,payload.stage,'NEW','Giai đoạn khách tiềm năng')};
  throw Object.assign(new Error('Phân hệ chưa hỗ trợ lưu D1'),{status:405});
 }
 async function saveEntity(env,user,entity,request,method,id){
@@ -103,39 +124,49 @@ async function saveEntity(env,user,entity,request,method,id){
  const v=validated(entity,payload);
  const entityId=method==='POST'?crypto.randomUUID():id;
  if(!entityId||entityId.length>100)return bad('Mã bản ghi không hợp lệ',400);
- let old=null;
+ let old=null,expected=null;
  if(method==='PATCH'){
+  // Khóa lạc quan: client phải gửi updated_at của bản ghi đang sửa để không ghi đè thay đổi của người khác.
+  expected=typeof payload.expected_updated_at==='string'?payload.expected_updated_at:null;
+  if(!expected)return bad('Thiếu phiên bản bản ghi (expected_updated_at). Vui lòng tải lại trang rồi sửa lại.',428);
   old=await env.DB.prepare('SELECT * FROM '+entity+' WHERE id=?').bind(entityId).first();
   if(!old)return bad('Không tìm thấy bản ghi',404);
   if(user.role==='SALES' && old.owner_email!==user.email)return bad('Không có quyền sửa bản ghi này',403);
+  if(old.updated_at!==expected)return bad('Bản ghi vừa được người khác cập nhật. Vui lòng tải lại để xem dữ liệu mới trước khi sửa.',409);
  }
  const now=new Date().toISOString();
  let stmt;
  if(entity==='customers'){
   const owner=method==='PATCH'?old.owner_email:user.email;
   stmt=method==='POST'
-   ?env.DB.prepare('INSERT INTO customers(id,name,tax_code,phone,region,address,owner_email,status) VALUES(?,?,?,?,?,?,?,?)').bind(entityId,v.name,v.tax_code,v.phone,v.region,v.address,owner,v.status)
-   :env.DB.prepare('UPDATE customers SET name=?,tax_code=?,phone=?,region=?,address=?,status=?,updated_at=? WHERE id=?').bind(v.name,v.tax_code,v.phone,v.region,v.address,v.status,now,entityId);
+   ?env.DB.prepare('INSERT INTO customers(id,name,tax_code,phone,region,address,owner_email,status,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(entityId,v.name,v.tax_code,v.phone,v.region,v.address,owner,v.status,now)
+   :env.DB.prepare('UPDATE customers SET name=?,tax_code=?,phone=?,region=?,address=?,status=?,updated_at=? WHERE id=? AND updated_at=?').bind(v.name,v.tax_code,v.phone,v.region,v.address,v.status,now,entityId,expected);
  }else if(entity==='products'){
   stmt=method==='POST'
-   ?env.DB.prepare('INSERT INTO products(id,name,category,origin,unit) VALUES(?,?,?,?,?)').bind(entityId,v.name,v.category,v.origin,v.unit)
-   :env.DB.prepare('UPDATE products SET name=?,category=?,origin=?,unit=? WHERE id=?').bind(v.name,v.category,v.origin,v.unit,entityId);
+   ?env.DB.prepare('INSERT INTO products(id,name,category,origin,unit,updated_at) VALUES(?,?,?,?,?,?)').bind(entityId,v.name,v.category,v.origin,v.unit,now)
+   :env.DB.prepare('UPDATE products SET name=?,category=?,origin=?,unit=?,updated_at=? WHERE id=? AND updated_at=?').bind(v.name,v.category,v.origin,v.unit,now,entityId,expected);
  }else if(entity==='leads'){
   const owner=method==='PATCH'?old.owner_email:user.email;
   stmt=method==='POST'
-   ?env.DB.prepare('INSERT INTO leads(id,name,contact,owner_email,stage) VALUES(?,?,?,?,?)').bind(entityId,v.name,v.contact,owner,v.stage)
-   :env.DB.prepare('UPDATE leads SET name=?,contact=?,stage=?,updated_at=? WHERE id=?').bind(v.name,v.contact,v.stage,now,entityId);
+   ?env.DB.prepare('INSERT INTO leads(id,name,contact,owner_email,stage,updated_at) VALUES(?,?,?,?,?,?)').bind(entityId,v.name,v.contact,owner,v.stage,now)
+   :env.DB.prepare('UPDATE leads SET name=?,contact=?,stage=?,updated_at=? WHERE id=? AND updated_at=?').bind(v.name,v.contact,v.stage,now,entityId,expected);
  }
- const audit=env.DB.prepare('INSERT INTO audit_log(id,actor_email,action,entity,entity_id,before_json,after_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),user.email,method==='POST'?'CREATE':'UPDATE',entity,entityId,old?JSON.stringify(old):null,JSON.stringify(v));
+ // Nhật ký chỉ được ghi khi lệnh UPDATE thực sự áp dụng (bản ghi mang đúng mốc updated_at mới của lần lưu này).
+ const audit=env.DB.prepare('INSERT INTO audit_log(id,actor_email,action,entity,entity_id,before_json,after_json) SELECT ?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM '+entity+' WHERE id=? AND updated_at=?)').bind(crypto.randomUUID(),user.email,method==='POST'?'CREATE':'UPDATE',entity,entityId,old?JSON.stringify(old):null,JSON.stringify(v),entityId,now);
  try{
-  await env.DB.batch([stmt,audit]);
-  return response({ok:true,data:{id:entityId,...v},persisted:true},method==='POST'?201:200);
+  const results=await env.DB.batch([stmt,audit]);
+  if(method==='PATCH'&&!(results?.[0]?.meta?.changes>0))return bad('Bản ghi vừa được người khác cập nhật. Vui lòng tải lại để xem dữ liệu mới trước khi sửa.',409);
+  return response({ok:true,data:{id:entityId,...v,updated_at:now},persisted:true},method==='POST'?201:200);
  }catch(e){
+  const msg=String(e?.message||'');
+  if(/UNIQUE/i.test(msg))return bad('Mã số thuế đã tồn tại ở một khách hàng khác.',409);
+  if(/CHECK|ctfood_invalid/i.test(msg))return bad('Dữ liệu không đúng định dạng cho phép.',400);
   console.error('D1 save failed',e?.name);
-  return bad('Không lưu được dữ liệu. Kiểm tra trùng mã số thuế và quyền truy cập.',409);
+  return bad('Không lưu được dữ liệu. Vui lòng thử lại hoặc báo quản trị viên.',500);
  }
 }
-export default{
+// createWorker cho phép kiểm thử truyền bộ khóa cục bộ; bản triển khai luôn dùng JWKS thật của Cloudflare Access.
+export function createWorker({getKeys=remoteKeys}={}){return{
  async fetch(request,env){
   const url=new URL(request.url);
   if(url.pathname==='/health'&&request.method==='GET')return response({ok:true,service:'ctfood-crm-api',mode:'preproduction'});
@@ -143,7 +174,7 @@ export default{
   if(request.method==='OPTIONS')return bad('CORS không cho phép',405);
   try{
    assertConfig(env);
-   const user=await identity(request,env);
+   const user=await identity(request,env,getKeys);
    if(request.method==='GET'&&url.pathname==='/api/me')return response({ok:true,user});
    if(request.method==='GET'&&url.pathname==='/api/summary'){
     const mine=user.role==='SALES';
@@ -169,4 +200,5 @@ export default{
    return bad(status===500?'Lỗi cấu hình hoặc máy chủ':error.message,status);
   }
  }
-};
+}}
+export default createWorker();

@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-11-01"
 workers_dev = false
 
-# CẦN ĐIỀN SAU KHI TẠO DATABASE, KHÔNG PHẢI ID THẬT.
+# ID của D1 ctfood-crm đang dùng (không phải bí mật; quyền truy cập do tài khoản Cloudflare kiểm soát).
 [[d1_databases]]
 binding = "DB"
 database_name = "ctfood-crm"

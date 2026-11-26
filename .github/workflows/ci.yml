@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install project dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Run isolated D1 regression tests
         run: npm test
       - name: Build CRM frontend and Pages Functions dependencies

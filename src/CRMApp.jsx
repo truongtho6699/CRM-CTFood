@@ -20,6 +20,9 @@ const NAV=[
 ];
 const ROLE_WRITE=new Set(['ADMIN','BOD','SALES_MANAGER','SALES_ADMIN']);
 const PAGE_SIZE=25;
+// Mã chuẩn trong D1 -> nhãn hiển thị (khớp CUSTOMER_STATUS / LEAD_STAGE trong worker).
+const STATUS_LABEL={ACTIVE:'Đang giao dịch',PROSPECT:'Tiềm năng',INACTIVE:'Ngừng giao dịch'};
+const STAGE_LABEL={NEW:'Mới',CONTACTING:'Đang liên hệ',QUOTED:'Đã báo giá',CONVERTED:'Chuyển đổi',REJECTED:'Không phù hợp'};
 const getRoute=()=>{
  const page=(window.location.hash||'#/dashboard').replace(/^#\/?/,'').split('?')[0];
  return [...NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
@@ -49,7 +52,7 @@ function Notice({type='info',children}){
 }
 function Modal({entity,initial,onCancel,onSave}){
  const schema=SCHEMAS[entity];
- const [form,setForm]=useState(initial?{...initial,tax:initial.tax_code??initial.tax??'',group:initial.category??initial.group??'',status:initial.status==='ACTIVE'?'Đang giao dịch':initial.status==='INACTIVE'?'Ngừng giao dịch':initial.status==='PROSPECT'?'Tiềm năng':initial.status}:{});
+ const [form,setForm]=useState(initial?{...initial,tax:initial.tax_code??initial.tax??'',group:initial.category??initial.group??'',status:STATUS_LABEL[initial.status]??initial.status,stage:STAGE_LABEL[initial.stage]??initial.stage}:{});
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const heading=useId();
@@ -136,7 +139,8 @@ function MasterList({entity,role,onSaved}){
  const reload=()=>setSequence(i=>i+1);
  const save=async (payload,old)=>{
   const method=old?'PATCH':'POST',path='/api/'+entity+(old?'/'+encodeURIComponent(old.id):'');
-  const res=await fetch(path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(payload)});
+  const body=old?{...payload,expected_updated_at:old.updated_at}:payload;
+  const res=await fetch(path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(body)});
   const data=await res.json().catch(()=>({}));
   if(!res.ok||!data.ok||!data.persisted)throw Error(data.error||'Máy chủ chưa xác nhận lưu dữ liệu D1');
   setEditing(undefined);setFlash(old?'Đã cập nhật bản ghi trên D1.':'Đã thêm bản ghi vào D1.');
@@ -146,7 +150,7 @@ function MasterList({entity,role,onSaved}){
  const cell=(row,key)=>{
   if(key==='tax')return toText(row.tax_code||row.tax)||'—';
   if(key==='group')return toText(row.category||row.group)||'—';
-  if(key==='status'||key==='stage')return <Status value={key==='status'?({'ACTIVE':'Đang giao dịch','INACTIVE':'Ngừng giao dịch','PROSPECT':'Tiềm năng'}[row[key]]||row[key]):row[key]}/>;
+  if(key==='status'||key==='stage')return <Status value={(key==='status'?STATUS_LABEL:STAGE_LABEL)[row[key]]||row[key]}/>;
   if(key==='id')return <span className="ct-id">{toText(row.id).slice(0,8)}</span>;
   return toText(row[key])||'—';
  };
@@ -155,7 +159,7 @@ function MasterList({entity,role,onSaved}){
    <div className="ct-actions"><button className="ct-btn secondary" disabled={loading} onClick={reload}><RefreshCcw size={17}/> Làm mới</button><button className="ct-btn secondary" disabled={loading||rows.length===0} onClick={()=>safeCSV(rows,entity)} title="Chỉ xuất trang dữ liệu đang hiển thị"><Download size={17}/> Xuất trang</button>{canWrite&&<button className="ct-btn primary" onClick={()=>setEditing(null)}><Plus size={17}/> Tạo mới</button>}</div>
   </div>
   {flash&&<Notice type="success">{flash}</Notice>}
-  <div className="ct-toolbar"><label className="ct-search"><Search size={18}/><span className="sr-only">Tìm kiếm {schema.title.toLowerCase()}</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={'Tìm theo tên '+schema.title.toLowerCase()+'...'} aria-label={'Tìm kiếm '+schema.title}/></label><span className="ct-toolbar-counter">Trang {page+1} · Tối đa {PAGE_SIZE} dòng</span></div>
+  <div className="ct-toolbar"><label className="ct-search"><Search size={18}/><span className="sr-only">Tìm kiếm {schema.title.toLowerCase()}</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={entity==='customers'?'Tìm theo tên, số điện thoại hoặc mã số thuế...':'Tìm theo tên '+schema.title.toLowerCase()+'...'} aria-label={'Tìm kiếm '+schema.title}/></label><span className="ct-toolbar-counter">Trang {page+1} · Tối đa {PAGE_SIZE} dòng</span></div>
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải danh sách</strong><p>{error}</p><button className="ct-btn secondary" onClick={reload}>Thử lại</button></div>
    :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2,3].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>{query?'Không tìm thấy kết quả':'Chưa có dữ liệu'}</strong><p>{query?'Hãy thử từ khóa khác.':'Có thể tạo bản ghi đầu tiên nếu tài khoản được cấp quyền.'}</p></div>

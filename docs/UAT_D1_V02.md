@@ -32,6 +32,16 @@
 | UAT-14 | Kiểm tra xuất CSV khi có ô bắt đầu bằng =, +, - hoặc @ | Excel không diễn giải như công thức nguy hiểm | Chưa chạy |
 | UAT-15 | Đối chiếu bảng `customers`, `products`, `leads`, `audit_log` | Số bản ghi và người thay đổi khớp thao tác | Chưa chạy |
 
+## Bổ sung sau bản sửa lỗi review (11/2026)
+
+| Mã | Kịch bản | Kết quả mong đợi | Trạng thái |
+|---|---|---|---|
+| UAT-16 | Mở cùng một khách hàng ở hai tab, lưu tab 1 rồi lưu tab 2 | Tab 2 báo "Bản ghi vừa được người khác cập nhật", dữ liệu tab 1 giữ nguyên | Chưa chạy |
+| UAT-17 | Tìm khách bằng số điện thoại hoặc mã số thuế | Ra đúng khách hàng | Chưa chạy |
+| UAT-18 | Sau migration 0003, xem cột Trạng thái / Giai đoạn | Hiển thị nhãn tiếng Việt đúng; `SELECT DISTINCT status FROM customers` chỉ còn mã chuẩn | Chưa chạy |
+
+Kiểm thử tự động tương ứng nằm trong `tests/rbac-api.test.mjs` và `tests/migration-0003.test.mjs`; vẫn cần chạy UAT bằng phiên đăng nhập thật.
+
 ## Cần xử lý sau UAT
 
 - Chưa có kiểm thử xuyên suốt trình duyệt có phiên Access, do đó **không đánh dấu Đạt** cho các bước trên khi chỉ thấy build thành công.
