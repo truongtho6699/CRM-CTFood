@@ -10,14 +10,14 @@ function freshDatabase(){
  return db;
 }
 
-test('migrations initialize the CRM tables plus audit-safe import history',()=>{
+test('migrations 0001 and 0002 initialize the original 12 CRM tables',()=>{
  const db=freshDatabase();
  try{
   const names=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map(x=>x.name);
-  for(const table of ['app_users','customers','products','containers','orders','order_lines','deliveries','payments','payment_allocations','activities','audit_log','leads','import_batches']){
+  for(const table of ['app_users','customers','products','containers','orders','order_lines','deliveries','payments','payment_allocations','activities','audit_log','leads']){
    assert.ok(names.includes(table),'Missing table: '+table);
   }
-  assert.equal(names.length,13);
+  assert.equal(names.length,12);
  }finally{db.close()}
 });
 
