@@ -50,8 +50,8 @@
 | P0 | BIZ-01 | Chốt BRD các quy tắc đơn hàng, giao thực, VAT, công nợ, giá vốn, hoa hồng, KPI | ❌ Các câu hỏi P0 trong tab `Rivew 1` còn phải chốt; **không bật ghi tài chính** | BGĐ + Sales + Kế toán |
 | P1 | ORDER-01 | CRUD đơn hàng nhiều dòng, trạng thái, giá bán và duyệt ngoại lệ | 🟡 Có mã + test (PR #5) theo **giả định tạm** ở mục 8: tạo/sửa đơn nhiều dòng, 3 trạng thái, Sale Admin xác nhận giao, TPKD/BGĐ hủy có lý do, audit. **Chưa tính KPI, chưa ghi tiền.** Cần migration 0005, UAT và BGĐ chốt C01–C05 | BA + DEV |
 | P1 | LOG-01 | Container, tồn kho, phiếu cân, nhiều lần giao và đối chiếu số kg thực tế | 🟡 Phiếu cân + giao nhiều lần có mã + test (PR #6) theo **giả định tạm** ở mục 9: Sale Admin/Kho/Kế toán nhập, **Kế toán xác nhận kg thực giao**, hiển thị chênh lệch. Container/tồn kho/giá vốn **chưa làm**. Cần migration 0006, UAT, BGĐ chốt D01/D03/D04 | Kho + DEV |
-| P1 | FIN-01 | Đặt cọc, thu tiền từng phần, công nợ, đối soát, hóa đơn | ❌ Chưa phát hành ghi tài chính thật | Kế toán + DEV |
-| P1 | KPI-01 | Kết nối dashboard KPI hiện có | ❌ Chưa tích hợp; cần bảo toàn hệ thống KPI độc lập | Quản trị KPI + DATA |
+| P1 | FIN-01 | Đặt cọc, thu tiền từng phần, công nợ, đối soát, hóa đơn | 🟡 Có mã + test (PR #8) theo **giả định tạm** mục 11: phiếu thu cọc/thanh toán (tiền số nguyên), phân bổ nhiều đơn, hủy phiếu có lý do, công nợ theo giao hàng, hạn = ngày giao cuối + số ngày nợ, tuổi nợ. Chưa VAT, chưa hoàn/chuyển cọc, chưa đối soát ngân hàng, chưa hóa đơn. Cần migration 0007 + UAT | Kế toán + DEV |
+| P1 | KPI-01 | Kết nối dashboard KPI hiện có | 🟡 Báo cáo doanh số/sản lượng/CK theo Sales, tháng, sản phẩm, khách hàng + công nợ quá hạn theo Sales (PR #8), tính từ kg giao đã xác nhận. **Chưa kết nối hệ thống KPI hiện hành**, chưa có giá vốn/lợi nhuận | Quản trị KPI + DATA |
 | P1 | SEC-04 | UAT RBAC bằng tài khoản Sales/Logistics/Kế toán thật | ⏳ Test tự động có nhưng chưa kiểm thử qua phiên thực tế | QA + quản trị |
 | P1 | OPS-01 | Sao lưu, kiểm thử restore, khóa kỳ, rollback và giám sát | ❌ Chưa có biên bản nghiệm thu khôi phục DB / vận hành | DEVOPS |
 | P1 | QA-02 | Lighthouse/Web Vitals, mobile, tải dữ liệu lớn và benchmark API | ❌ Chưa đo/kiểm thử với người dùng thật | UIUX + QA |
@@ -156,3 +156,19 @@ Phiên ADMIN thật trên https://crm-ctfood.pages.dev sau khi merge PR #3–#6 
 | Nhật ký | ✅ | CREATE, VERIFY (deliveries) và COMPLETE (orders) đúng thứ tự, đúng người |
 
 **Điểm cần BGĐ quyết thêm (phát sinh khi UAT):** DEMO-DH01 có 2 dòng nhưng mới giao dòng Nạc vai; dòng Sườn non (3.000 kg) chưa giao vẫn chuyển "Thành công" được, vì quy tắc tạm chỉ yêu cầu ≥1 phiếu đã xác nhận. Cần chốt: có bắt buộc **mọi dòng** phải có phiếu đã xác nhận, hoặc giao đủ trong ngưỡng sai số (ví dụ ±2%), trước khi "Thành công" không (gắn với C03/D04).
+
+## 11. GIẢ ĐỊNH TẠM CHO THU TIỀN & CÔNG NỢ (FIN-01) VÀ BÁO CÁO & KPI (KPI-01) — CHỜ CHỐT
+
+| Câu | Giả định đang áp dụng | Ở đâu trong mã |
+| --- | --- | --- |
+| E01 Công nợ phát sinh | **Theo giao hàng**: giá trị = Σ kg đã được Kế toán xác nhận × giá chưa VAT của dòng đơn (Lưu đồ mục 16) | `worker/src/finance.js` (`receivableRows`) |
+| E02 Hạn thanh toán | **Ngày giao cuối đã xác nhận + số ngày nợ của khách** (`customers.credit_days`); quá hạn khi còn số dư sau hạn | `receivableRows` |
+| E03 Phân bổ | Một phiếu thu phân bổ **nhiều đơn của cùng khách**; tổng phân bổ ≤ số tiền phiếu; phần còn lại là "tiền chưa phân bổ" của khách; Kế toán sửa phân bổ được (có nhật ký) | `setAllocations`, migration 0007 |
+| C06 Cọc | Cọc thực nhận là phiếu thu loại **Đặt cọc**, phân bổ vào đơn như thanh toán (đơn chưa giao sẽ có số dư âm = khách trả trước) | `createPayment` |
+| — Tiền | **Số nguyên (đồng)**, chặn ở API và trigger DB; phiếu đã lập không sửa số tiền — sai thì **hủy phiếu (bắt buộc lý do)** và lập lại | migration 0007 |
+| — Quyền | **Kế toán, ADMIN** lập/phân bổ/hủy phiếu thu; Sales xem công nợ và phiếu thu của khách mình; Kho không xem tài chính | `WRITE`, `READ` |
+| — Hủy đơn | Đơn có tiền đã phân bổ thì phải gỡ phân bổ trước khi hủy | `worker/src/orders.js` |
+| G01 Ghi nhận doanh số | **Theo ngày giao trên phiếu cân đã xác nhận**; doanh thu KPI = kg đã xác nhận × giá chưa VAT; sản lượng KPI = kg đã xác nhận (Lưu đồ mục 15–16) | `salesReport` |
+| — Hoa hồng | Σ kg đã xác nhận × CK/hoa hồng đ/kg nhập trên dòng đơn; **chưa trừ vào lãi** (F02 chưa chốt) | `salesReport` |
+
+**Chưa làm:** VAT (C05), hoàn cọc/chuyển cọc/thanh toán thừa (E04), hạn mức tín dụng chặn đơn (E05), đối soát ngân hàng/nhắc nợ (E06), hóa đơn, giá vốn/lợi nhuận (F01–F05), trả hàng điều chỉnh doanh số (G03), kết nối hệ thống KPI hiện hành (A03).

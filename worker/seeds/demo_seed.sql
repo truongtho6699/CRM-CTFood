@@ -8,7 +8,8 @@
 INSERT OR IGNORE INTO app_users(email,full_name,role,active) VALUES
  ('sale.an@demo.ctfood.invalid','[DEMO] Nguyễn Văn An','SALES',0),
  ('sale.binh@demo.ctfood.invalid','[DEMO] Trần Thị Bình','SALES',0),
- ('truongphong@demo.ctfood.invalid','[DEMO] Lê Hoàng Trưởng phòng','SALES_MANAGER',0);
+ ('truongphong@demo.ctfood.invalid','[DEMO] Lê Hoàng Trưởng phòng','SALES_MANAGER',0),
+ ('ketoan@demo.ctfood.invalid','[DEMO] Phạm Thu Kế toán','ACCOUNTING',0);
 
 INSERT OR IGNORE INTO products(id,name,category,origin,brand,unit,active,updated_at) VALUES
  ('DEMO-SP01','[DEMO] Nạc vai heo đông lạnh','Thịt heo','Brazil','Seara','kg',1,'2026-11-26T03:00:00.000Z'),
@@ -85,3 +86,12 @@ UPDATE orders SET status='SUCCESS',status_note='Đã giao đủ theo phiếu câ
  WHERE id='DEMO-DH03' AND status='PENDING';
 UPDATE orders SET status='CANCELLED',status_note='Khách hoãn mua sang quý sau',status_by='truongphong@demo.ctfood.invalid',status_at='2026-11-18T03:00:00.000Z'
  WHERE id='DEMO-DH04' AND status='PENDING';
+
+-- Phiếu thu mẫu (cần migration 0007). Tiền là số nguyên (đồng).
+INSERT OR IGNORE INTO payments(id,customer_id,amount,payment_date,payment_type,method,reference,note,status,created_by,updated_at) VALUES
+ ('DEMO-PT01','DEMO-KH01',200000000,'2026-11-21','DEPOSIT','BANK','UNC-DEMO-01','[DEMO] Cọc đơn DEMO-DH01','ACTIVE','ketoan@demo.ctfood.invalid','2026-11-26T03:00:00.000Z'),
+ ('DEMO-PT02','DEMO-KH05',100000000,'2026-11-20','PAYMENT','BANK','UNC-DEMO-02','[DEMO] Thanh toán một phần DEMO-DH03','ACTIVE','ketoan@demo.ctfood.invalid','2026-11-26T03:00:00.000Z'),
+ ('DEMO-PT03','DEMO-KH02',150000000,'2026-11-22','DEPOSIT','CASH','PT-DEMO-03','[DEMO] Cọc chưa phân bổ','ACTIVE','ketoan@demo.ctfood.invalid','2026-11-26T03:00:00.000Z');
+INSERT OR IGNORE INTO payment_allocations(id,payment_id,order_id,amount,created_by,created_at) VALUES
+ ('DEMO-PA01','DEMO-PT01','DEMO-DH01',200000000,'ketoan@demo.ctfood.invalid','2026-11-26T03:00:00.000Z'),
+ ('DEMO-PA02','DEMO-PT02','DEMO-DH03',100000000,'ketoan@demo.ctfood.invalid','2026-11-26T03:00:00.000Z');

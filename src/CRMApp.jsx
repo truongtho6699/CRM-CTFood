@@ -7,11 +7,10 @@ import {SCHEMAS} from './data.js';
 import {Status,Notice,jsonFetch,toText} from './ui.jsx';
 import {OrdersPage} from './Orders.jsx';
 import {DeliveriesPage} from './Deliveries.jsx';
+import {PaymentsPage,ReportsPage} from './Finance.jsx';
 
 const LIVE=['customers','leads','products'];
 const LOCKED=[
- {id:'payments',name:'Thu tiền & công nợ',icon:Wallet,description:'Chưa nghiệm thu phân bổ thanh toán và công nợ'},
- {id:'kpi',name:'Báo cáo & KPI',icon:ChartColumn,description:'Chưa tích hợp KPI đang vận hành; không sử dụng số liệu mẫu'},
 ];
 const NAV=[
  {id:'dashboard',name:'Tổng quan',icon:LayoutDashboard},
@@ -20,6 +19,8 @@ const NAV=[
  {id:'products',name:'Sản phẩm',icon:Package},
  {id:'orders',name:'Đơn hàng',icon:ShoppingCart,badge:'Thử nghiệm'},
  {id:'deliveries',name:'Giao hàng & phiếu cân',icon:Truck,badge:'Thử nghiệm'},
+ {id:'payments',name:'Thu tiền & công nợ',icon:Wallet,badge:'Thử nghiệm'},
+ {id:'kpi',name:'Báo cáo & KPI',icon:ChartColumn,badge:'Thử nghiệm'},
 ];
 // Khớp ROLES trong worker/src/index.js.
 const ROLE_LABEL={ADMIN:'Quản trị hệ thống',BOD:'Ban Giám đốc',ACCOUNTING:'Kế toán',SALES_MANAGER:'Trưởng phòng kinh doanh',SALES:'Nhân viên kinh doanh',SALES_ADMIN:'Sale Admin',LOGISTICS:'Kho / Logistics'};
@@ -295,8 +296,8 @@ function Dashboard({summary,loading,error,onRetry,onNavigate,updatedAt}){
   </button>)}</div>
   <div className="ct-dashboard-grid"><section className="ct-panel"><div className="ct-panel-title"><div><h3>Tình trạng dữ liệu</h3><p>Thông tin hệ thống thực, không dùng số liệu minh họa</p></div><ShieldCheck size={22}/></div>
    <div className="ct-status-list"><div><span>Đăng nhập</span><Status value="Đang hoạt động"/></div><div><span>Khách hàng · Khách tiềm năng · Sản phẩm</span><Status value={error?'Cần kiểm tra':'Đã kết nối'}/></div><div><span>Nguồn tổng hợp</span><strong>Cloudflare D1</strong></div><div><span>Cập nhật gần nhất</span><strong>{updatedAt?new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'medium'}).format(updatedAt):'Chưa có'}</strong></div></div>
-  </section><section className="ct-panel"><div className="ct-panel-title"><div><h3>Các phân hệ tiếp theo</h3><p>Chưa mở vận hành, chờ kiểm thử nghiệp vụ</p></div><Clock3 size={22}/></div>
-   <div className="ct-next-list">{LOCKED.map(item=><div key={item.id}><Lock size={16}/><span>{item.name}</span><span className="ct-next-tag">Chưa nghiệm thu</span></div>)}</div>
+  </section><section className="ct-panel"><div className="ct-panel-title"><div><h3>Phân hệ thử nghiệm</h3><p>Đang chạy theo giả định tạm, chờ BGĐ/Kế toán chốt quy tắc</p></div><Clock3 size={22}/></div>
+   <div className="ct-next-list">{NAV.filter(item=>item.badge).map(item=><div key={item.id}><Lock size={16}/><span>{item.name}</span><span className="ct-next-tag">Chờ chốt quy tắc</span></div>)}</div>
   </section></div>
  </div>;
 }
@@ -336,9 +337,10 @@ function CRMApp(){
  useEffect(()=>{if(auth.status==='online')loadSummary()},[auth.status]);
  if(auth.status!=='online')return <LoginPanel error={auth.error} loading={auth.status==='loading'} onRetry={authenticate}/>;
  const isAdmin=auth.user.role==='ADMIN';
- const permittedNav=NAV.filter(item=>item.id!=='leads'||auth.user.role!=='LOGISTICS');
+ // Kho/Logistics không xem khách tiềm năng và tài chính (API cũng chặn).
+ const permittedNav=NAV.filter(item=>!(auth.user.role==='LOGISTICS'&&['leads','payments','kpi'].includes(item.id)));
  const adminNav=isAdmin?[ADMIN_NAV]:[];
- const selectedPage=(route==='leads'&&auth.user.role==='LOGISTICS')||(route==='users'&&!isAdmin)?'dashboard':route;
+ const selectedPage=(auth.user.role==='LOGISTICS'&&['leads','payments','kpi'].includes(route))||(route==='users'&&!isAdmin)?'dashboard':route;
  const current=[...permittedNav,...ACCOUNT_NAV,...adminNav,...LOCKED].find(x=>x.id===selectedPage)||permittedNav[0];
  const navButton=(item,extra)=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(extra||'')+(route===item.id?' active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{extra==='pending'&&<Lock size={14}/>}{item.badge&&<span className="ct-nav-badge">{item.badge}</span>}{item.id==='dashboard'&&<span className="ct-nav-arrow">●</span>}</button>};
  const Icon=current.icon;
@@ -348,7 +350,7 @@ function CRMApp(){
    <nav className="ct-nav"><div className="ct-nav-label">DỮ LIỆU ĐÃ KẾT NỐI</div>{permittedNav.map(item=>navButton(item))}
     <div className="ct-nav-label ct-nav-label-next">TÀI KHOẢN</div>{ACCOUNT_NAV.map(item=>navButton(item))}
     {isAdmin&&<><div className="ct-nav-label ct-nav-label-next">QUẢN TRỊ</div>{adminNav.map(item=>navButton(item))}</>}
-    <div className="ct-nav-label ct-nav-label-next">CHƯA NGHIỆM THU</div>{LOCKED.map(item=>navButton(item,'pending'))}</nav>
+    {LOCKED.length>0&&<><div className="ct-nav-label ct-nav-label-next">CHƯA NGHIỆM THU</div>{LOCKED.map(item=>navButton(item,'pending'))}</>}</nav>
    <div className="ct-sidebar-footer"><span className="ct-online-dot"/> CT FOOD V0.4 · D1</div>
   </aside>
   {drawer&&<button className="ct-drawer-overlay" aria-label="Đóng menu" onClick={()=>setDrawer(false)}/>}
@@ -359,6 +361,8 @@ function CRMApp(){
      :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
      :selectedPage==='orders'?<OrdersPage user={auth.user}/>
      :selectedPage==='deliveries'?<DeliveriesPage user={auth.user}/>
+     :selectedPage==='payments'?<PaymentsPage user={auth.user}/>
+     :selectedPage==='kpi'?<ReportsPage user={auth.user}/>
      :selectedPage==='profile'?<AccountProfile user={auth.user}/>
      :selectedPage==='password'?<AccountPassword/>
      :LIVE.includes(selectedPage)?<MasterList key={selectedPage} entity={selectedPage} role={auth.user.role} onSaved={loadSummary}/>

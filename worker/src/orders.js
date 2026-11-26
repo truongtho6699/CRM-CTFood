@@ -204,6 +204,11 @@ async function changeStatus(env,user,request,id){
   const live=await env.DB.prepare("SELECT COUNT(*) AS n FROM deliveries d JOIN order_lines l ON l.id=d.order_line_id WHERE l.order_id=? AND d.status<>'CANCELLED'").bind(id).first();
   if(live?.n>0)return bad('Đơn còn phiếu cân chưa hủy. Hủy các phiếu cân trước khi hủy đơn.',409);
  }
+ // FIN-01: đơn đã nhận tiền (cọc/thanh toán phân bổ) thì phải gỡ phân bổ trước khi hủy.
+ if(status==='CANCELLED'){
+  const paid=await env.DB.prepare("SELECT COUNT(*) AS n FROM payment_allocations a JOIN payments p ON p.id=a.payment_id WHERE a.order_id=? AND p.status='ACTIVE'").bind(id).first();
+  if(paid?.n>0)return bad('Đơn đã có tiền cọc/thanh toán được phân bổ. Kế toán gỡ phân bổ trước khi hủy đơn.',409);
+ }
  const now=new Date().toISOString();
  const stmts=[
   env.DB.prepare("UPDATE orders SET status=?,status_note=?,status_by=?,status_at=?,updated_at=? WHERE id=? AND updated_at=? AND status='PENDING'").bind(status,note||null,user.email,now,now,id,expected),
