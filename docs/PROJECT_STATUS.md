@@ -172,3 +172,15 @@ Phiên ADMIN thật trên https://crm-ctfood.pages.dev sau khi merge PR #3–#6 
 | — Hoa hồng | Σ kg đã xác nhận × CK/hoa hồng đ/kg nhập trên dòng đơn; **chưa trừ vào lãi** (F02 chưa chốt) | `salesReport` |
 
 **Chưa làm:** VAT (C05), hoàn cọc/chuyển cọc/thanh toán thừa (E04), hạn mức tín dụng chặn đơn (E05), đối soát ngân hàng/nhắc nợ (E06), hóa đơn, giá vốn/lợi nhuận (F01–F05), trả hàng điều chỉnh doanh số (G03), kết nối hệ thống KPI hiện hành (A03).
+
+## 12. UAT THU TIỀN & CÔNG NỢ, BÁO CÁO & KPI TRÊN PRODUCTION — 26/11/2026
+
+| Kịch bản | Kết quả | Bằng chứng |
+| --- | --- | --- |
+| Công nợ từ phiếu cân đã xác nhận | ✅ | DEMO-DH01: 26.950,5 kg × 73.500 = 1.980.861.750 đ; hạn 26/12/2026 (giao 26/11 + 30 ngày) |
+| Lập phiếu thu 500.000.000 đ, phân bổ 400.000.000 đ | ✅ | Đã phân bổ 400 tr, chưa phân bổ 100 tr |
+| Sửa phân bổ (500 tr → 450 tr) | ✅ | Đã thu 450 tr, còn phải thu 1.530.861.750 đ, tiền chưa phân bổ 50 tr |
+| Báo cáo KPI tháng 11 | ✅ | Sản lượng 26.950,5 kg; doanh thu 1.980.861.750 đ; CK/HH 13.475.250 đ (= 26.950,5 × 500) |
+| Lỗi phát hiện | ❌→✅ | Trang trắng khi lưu phiếu rồi chuyển tab "Công nợ theo đơn" (đọc dữ liệu null) — sửa ở PR #9; bảng báo cáo phải cuộn ngang — sửa ở PR #9 |
+
+Dữ liệu thử nằm trên khách DEMO, sẽ được `demo_cleanup.sql` dọn.

@@ -39,3 +39,4 @@ a.ct-btn{text-decoration:none}
 .ct-kpis.ct-kpis-5{grid-template-columns:repeat(5,minmax(0,1fr));margin:0 0 18px}.ct-kpi-static{min-height:118px;cursor:default}.ct-kpi-static .ct-kpi-value{font-size:22px;margin:10px 0 6px;word-break:break-word}.ct-kpi-static.warn .ct-kpi-value{color:#9a6a00}.ct-kpi-static.bad .ct-kpi-value{color:#a63b35}
 .ct-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.ct-month{display:flex;flex-direction:column;font-size:11px;color:#55707b;gap:3px}.ct-month input{min-height:40px;border:1px solid #cddde2;border-radius:8px;padding:6px 8px;font:inherit;font-size:13px}
 @media(max-width:1100px){.ct-kpis.ct-kpis-5{grid-template-columns:repeat(2,minmax(0,1fr))}.ct-report-grid{grid-template-columns:1fr}}
+.ct-report-grid .ct-data-table{min-width:0}.ct-report-grid .ct-data-table th,.ct-report-grid .ct-data-table td{padding:10px 9px}
