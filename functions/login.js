@@ -20,6 +20,13 @@ body{margin:0;min-height:100dvh;display:grid;place-items:center;background:radia
 .brand strong{font-size:19px;display:block}.brand small{color:#5c7b7d;font-size:11px;letter-spacing:.7px}
 h1{margin:0 0 23px;font-size:25px;line-height:1.25}
 .btn{width:100%;min-height:48px;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 14px;text-decoration:none;font:inherit;font-size:14px;font-weight:700}
+.field{display:block;font-size:12px;font-weight:650;color:#294c59;margin-bottom:12px}
+.field input{display:block;width:100%;height:43px;margin-top:6px;padding:10px 12px;font:inherit;font-size:13px;background:#f5f8f9;border:1px solid #dbe5e7;border-radius:9px;color:#6a8389}
+.field input:disabled{cursor:not-allowed}
+.password{background:#8daea6;color:#fff;border:1px solid #8daea6;cursor:not-allowed}
+.short-note{font-size:11px;color:#6a6a5d;margin:8px 0 17px;text-align:center}
+.divider{display:flex;align-items:center;gap:11px;margin:14px 0;color:#6e858b;font-size:12px}
+.divider:before,.divider:after{content:"";flex:1;border-top:1px solid #e0e9eb}
 .google{background:#fff;border:1px solid #cbdadf;color:#183945}
 .google:hover{background:#f2f8f7;border-color:#8fbbb0}
 .google svg{width:20px;height:20px;flex-shrink:0}
@@ -33,6 +40,11 @@ a:focus-visible{outline:3px solid #1689b6;outline-offset:3px}
 <main class="card">
  <div class="brand"><span class="mark" aria-hidden="true">CT</span><div><strong>CT FOOD CRM</strong><small>HỆ THỐNG QUẢN LÝ KHÁCH HÀNG</small></div></div>
  <h1>Đăng nhập</h1>
+ <label class="field">Tên đăng nhập<input type="text" autocomplete="username" placeholder="Email hoặc tên đăng nhập" disabled></label>
+ <label class="field">Mật khẩu<input type="password" autocomplete="current-password" placeholder="Mật khẩu" disabled></label>
+ <button class="btn password" type="button" disabled>Đăng nhập</button>
+ <p class="short-note">User/Password chưa kích hoạt</p>
+ <div class="divider">Hoặc</div>
  <a class="btn google" href="https://crm-ctfood.pages.dev/" rel="nofollow">
  <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6C44.4 38.03 46.98 31.86 46.98 24.55z"/><path fill="#FBBC05" d="M10.53 28.59A14.38 14.38 0 0 1 9.75 24c0-1.59.27-3.12.76-4.59l-7.98-6.2A23.95 23.95 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.97 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
  Tiếp tục với Google
