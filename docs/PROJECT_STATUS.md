@@ -226,3 +226,18 @@ Cách tính tiến trình: **Giao %** = kg trên phiếu cân đã xác nhận /
 **Lưu ý dữ liệu:** Chỉ sửa mã nguồn/triển khai GitHub–Pages; không nạp dữ liệu lịch sử từ spreadsheet hoặc thay đổi bản ghi Production trong lần triển khai này.
 
 **Đối chiếu cuối cùng ngày 26/11/2026:** Cloudflare Pages deploy `c908d372e667b39bfba68f3881175a05eb6977d2` **success**. Truy vấn D1 chỉ đọc sau khi triển khai: `customers=13`, `leads=8`, `products=10`, `containers=0`, `audit_log=17`. Đây là snapshot **mới hơn** con số DEMO 12 khách hàng/0 audit ghi ở đầu tài liệu; có biến động dữ liệu trong lúc làm việc, không quy kết nguyên nhân khi chưa đối chiếu audit. Trong phiên triển khai danh mục này, trợ lý **không chạy lệnh ghi dữ liệu D1**, chỉ cập nhật repo và Cloudflare Pages tự deploy.
+
+
+## Cập nhật 26/11/2026 — Hoàn thiện trường danh mục theo template nguồn
+
+- [x] Đã đọc lại nguyên văn ba tab nguồn Google Sheets: `Mã khách hàng - NCC`, `Mã hàng hóa`, `Mã công trình`.
+- [x] Tạo migration **`0009_catalog_templates.sql`** (chỉ ADD COLUMN và CREATE INDEX) cho mã nghiệp vụ cũ, loại đối tác, liên hệ, Sales nguồn, đóng gói, quy đổi và tên hàng nguyên văn theo container.
+- [x] Đã lấy **D1 Time Travel bookmark** trước khi thay đổi: `0000003c-00000000-0000512f-728558f96ef7017e1b1af031019f2378`. Bảo quản trong tài liệu vận hành nội bộ; bookmark có thời hạn tùy chính sách Cloudflare, không thay thế backup độc lập.
+- [x] Đã áp dụng migration 0009 lên D1 Production, ghi nhận vào `d1_migrations`. Đối chiếu có cột `partner_type`, `conversion_kg`, `source_product_name`. Không làm thay đổi số lượng bản ghi của khách hàng/sản phẩm/container; tại thời điểm đối chiếu `13/10/0`, audit `17`.
+- [x] Đã mở rộng API đọc/ghi, kiểm tra email, mã nghiệp vụ cũ trùng, công nợ số ngày, quy đổi kg hợp lệ. Sales và nhóm không có quyền tài chính **không được thay đổi credit_days**, giá vốn container vẫn được phân quyền riêng.
+- [x] Màn hình Khách hàng/NCC và Hàng hóa có đủ cột/biểu mẫu, Container có thêm trường tên hàng nguồn, giữ nguyên mã container và liên kết mã hàng D1.
+- [x] Thêm test cấu trúc `tests/catalog-template-schema.test.mjs` và tài liệu mapping `docs/CATALOG_TEMPLATE_MAPPING.md`.
+- [ ] Chưa xây dựng import hàng loạt Excel/Google Sheets với staging, xác minh trùng và phê duyệt.
+- [ ] Chưa có bằng chứng UAT đăng nhập Google → tạo/sửa/tải lại các trường template trên trình duyệt.
+- [ ] Chưa chốt ánh xạ Sales nguồn sang `owner_email` và xác minh đơn vị quy đổi dạng `Mã cân` từ phòng ban.
+- [ ] Chưa có biên bản CI cho commit cuối trong lần rà soát (Cloudflare build/deploy là kiểm tra riêng).
