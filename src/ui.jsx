@@ -73,3 +73,31 @@ export const searchCustomers=async q=>(await jsonFetch('/api/customers?limit=20&
  .filter(c=>c.status!=='INACTIVE').map(c=>({id:c.id,label:c.name,sub:[c.phone,c.region].filter(Boolean).join(', ')}));
 export const searchProducts=async q=>(await jsonFetch('/api/products?limit=20&q='+encodeURIComponent(q))).data
  .filter(p=>p.active!==0).map(p=>({id:p.id,label:p.name,sub:[p.category,p.origin].filter(Boolean).join(', ')}));
+
+// Tiến trình một đơn: Đặt → Giao (kg đã xác nhận / kg đặt) → Thu (tiền đã phân bổ / giá trị đã giao).
+const shortMoney=n=>{n=Math.round(Number(n)||0);const a=Math.abs(n);return a>=1e9?(n/1e9).toLocaleString('vi-VN',{maximumFractionDigits:2})+' tỷ':a>=1e6?(n/1e6).toLocaleString('vi-VN',{maximumFractionDigits:1})+' tr':n.toLocaleString('vi-VN')};
+const kgFmt=n=>(Number(n)||0).toLocaleString('vi-VN',{maximumFractionDigits:1});
+export function orderProgress(o){
+ const total=Number(o.total_kg)||0,del=Number(o.delivered_kg)||0,val=Number(o.delivered_value)||0,paid=o.paid===undefined?null:Number(o.paid)||0;
+ const giao=total?Math.round(del/total*100):0;
+ const thu=paid===null?null:val?Math.round(paid/val*100):null;
+ return {giao,thu,del,total,val,paid,cancelled:o.status==='CANCELLED',pending:Number(o.pending_tickets)||0};
+}
+export function OrderProgress({order}){
+ const p=orderProgress(order);
+ const w=x=>Math.max(0,Math.min(100,x||0))+'%';
+ const step=(cls,title,detail)=><div className={'ct-step '+cls}><span className="ct-step-dot" aria-hidden="true"/><div><strong>{title}</strong><small>{detail}</small></div></div>;
+ return <div className={'ct-progress'+(p.cancelled?' cancelled':'')} aria-label="Tiến trình đơn hàng">
+  {step('done','Đặt',kgFmt(p.total)+' kg, '+shortMoney(order.total_amount)+' đ')}
+  <div className="ct-step-bar" aria-hidden="true"><i style={{width:w(p.giao)}}/></div>
+  {step(p.giao>=100?'done':p.giao>0?'part':'',p.giao>100?'Giao '+p.giao+'% (thừa)':'Giao '+p.giao+'%',kgFmt(p.del)+' / '+kgFmt(p.total)+' kg'+(p.pending?', '+p.pending+' phiếu chờ xác nhận':''))}
+  {p.paid!==null&&<><div className="ct-step-bar" aria-hidden="true"><i style={{width:w(p.thu)}}/></div>
+   {step(p.thu>=100?'done':p.paid>0?'part':'',p.thu===null?(p.paid>0?'Đã cọc':'Thu'):'Thu '+p.thu+'%',p.val?shortMoney(p.paid)+' / '+shortMoney(p.val)+' đ đã giao':p.paid>0?shortMoney(p.paid)+' đ trước khi giao':'Chưa giao, chưa thu')}</>}
+ </div>;
+}
+export function MiniProgress({order}){
+ const p=orderProgress(order);
+ if(p.cancelled)return <span className="ct-muted">Đã hủy</span>;
+ const bar=(label,v,hint)=><span className="ct-mini" title={hint}><span className="ct-mini-track"><i style={{width:Math.max(0,Math.min(100,v||0))+'%'}}/></span>{label}</span>;
+ return <span className="ct-minis">{bar('Giao '+p.giao+'%',p.giao,kgFmt(p.del)+' / '+kgFmt(p.total)+' kg')}{p.paid!==null&&bar(p.thu===null?(p.paid>0?'Đã cọc':'Thu 0%'):'Thu '+p.thu+'%',p.thu??0,shortMoney(p.paid)+' đ đã thu')}</span>;
+}

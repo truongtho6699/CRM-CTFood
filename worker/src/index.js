@@ -1,5 +1,5 @@
 import {createRemoteJWKSet,jwtVerify} from 'jose';
-import {response,bad,trimText,readJson,fail} from './http.js';
+import {response,bad,trimText,readJson,fail,likeFolded} from './http.js';
 import {handleOrders} from './orders.js';
 import {handleDeliveries} from './deliveries.js';
 import {handleFinance} from './finance.js';
@@ -90,13 +90,23 @@ async function listEntity(env,user,entity,params){
  const hasWhere=/\bWHERE\b/i.test(sql);
  const q=params.get('q')?.trim();
  if(q&&['customers','products','leads'].includes(entity)){
-  // Escape ký tự đại diện của LIKE để "%"/"_" do người dùng nhập được tìm đúng nghĩa đen.
-  const like='%'+q.slice(0,80).replace(/[\\%_]/g,c=>'\\'+c)+'%';
-  const cols=entity==='leads'?['name','contact']:entity==='products'?['name','category']:['name','phone','tax_code'];
-  sql+=(hasWhere?' AND ':' WHERE ')+'('+cols.map(c=>c+" LIKE ? ESCAPE '\\'").join(' OR ')+')';
-  bind.push(...cols.map(()=>like));
+  // Tìm trên search_key (đã bỏ dấu, viết thường — migration 0008): "suon", "SƯỜN", "Sườn" đều khớp. Escape "%"/"_".
+  sql+=(hasWhere?' AND ':' WHERE ')+"search_key LIKE ? ESCAPE '\\'";
+  bind.push(likeFolded(q.slice(0,80)));
  }
- sql+=' ORDER BY '+(entity==='order_lines'?'l.id':entity==='deliveries'?'d.id':entity==='payments'?'p.id':'id')+' DESC LIMIT ? OFFSET ?';
+ let order=(entity==='order_lines'?'l.id':entity==='deliveries'?'d.id':entity==='payments'?'p.id':'id')+' DESC';
+ if(entity==='customers'){
+  // Bước 3 UI/UX: lọc theo trạng thái, khu vực, Sales phụ trách; sắp xếp mới nhất hoặc theo tên (không dấu).
+  const add=(cond,val)=>{sql+=(/\bWHERE\b/i.test(sql)?' AND ':' WHERE ')+cond;bind.push(val)};
+  const st=trimText(params.get('status')||'',20).toUpperCase();
+  if(st){if(!['ACTIVE','PROSPECT','INACTIVE'].includes(st))return bad('Trạng thái lọc không hợp lệ',400);add('status=?',st)}
+  const region=trimText(params.get('region')||'',100);
+  if(region)add('region=?',region);
+  const owner=trimText(params.get('owner')||'',254).toLowerCase();
+  if(owner&&!salesFilter(user))add('owner_email=?',owner);
+  order=params.get('sort')==='name'?'search_key ASC,id ASC':'created_at DESC,id DESC';
+ }
+ sql+=' ORDER BY '+order+' LIMIT ? OFFSET ?';
  bind.push(limit+1,offset);
  const {results}=await env.DB.prepare(sql).bind(...bind).all();
  const items=(results||[]);

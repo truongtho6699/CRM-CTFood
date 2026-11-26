@@ -1,6 +1,6 @@
 // ORDER-01 — Đơn hàng nhiều dòng (giả định tạm theo tab "Lưu đồ", chờ BGĐ chốt C01–C05).
 // Không ghi tiền thật, không tính KPI: chỉ quản lý đơn, dòng hàng và trạng thái.
-import {response,bad,fail,trimText,readJson} from './http.js';
+import {response,bad,fail,trimText,readJson,likeFolded} from './http.js';
 
 export const ORDER_STATUS={PENDING:'Chờ giao',SUCCESS:'Thành công',CANCELLED:'Hủy'};
 export const ORDER_TYPE={OFFER:'Offer (hàng đặt mua)',IN_STOCK:'Hàng sẵn kho'};
@@ -13,6 +13,8 @@ const MAX_LINES=50;
 const CONFLICT='Đơn hàng vừa được người khác cập nhật hoặc đã chốt. Vui lòng tải lại để xem dữ liệu mới.';
 
 const isSales=user=>user.role==='SALES';
+// Kho/Logistics không xem số tiền đã thu (giống API tài chính).
+const hidePaid=(user,o)=>{if(o&&user.role==='LOGISTICS'){delete o.paid}return o};
 function intIn(v,min,max,label){
  const n=typeof v==='string'&&v.trim()!==''?Number(v):v;
  if(n===undefined||n===null||n==='')return min>0?(()=>{throw fail(label+' không được trống')})():0;
@@ -94,7 +96,9 @@ const SELECT_ORDER=`SELECT o.id,o.code,o.customer_id,c.name AS customer_name,o.s
  COALESCE(SUM(l.contracted_kg),0) AS total_kg,COALESCE(SUM(l.contracted_kg*l.unit_price_ex_vat),0) AS total_amount,COUNT(l.id) AS line_count,
  (SELECT COALESCE(SUM(d.delivered_kg),0) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id AND d.status='VERIFIED') AS delivered_kg,
  (SELECT COUNT(*) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id AND d.status='PENDING') AS pending_tickets,
- (SELECT COUNT(*) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id) AS ticket_count
+ (SELECT COUNT(*) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id) AS ticket_count,
+ (SELECT COALESCE(SUM(d.delivered_kg*x.unit_price_ex_vat),0) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id AND d.status='VERIFIED') AS delivered_value,
+ (SELECT COALESCE(SUM(a.amount),0) FROM payment_allocations a JOIN payments p ON p.id=a.payment_id WHERE a.order_id=o.id AND p.status='ACTIVE') AS paid
  FROM orders o JOIN customers c ON c.id=o.customer_id LEFT JOIN app_users u ON u.email=o.sales_email LEFT JOIN order_lines l ON l.order_id=o.id`;
 
 async function listOrders(env,user,params){
@@ -103,13 +107,13 @@ async function listOrders(env,user,params){
  const st=trimText(params.get('status'),20).toUpperCase();
  if(st){if(!Object.hasOwn(ORDER_STATUS,st))return bad('Trạng thái lọc không hợp lệ',400);where.push('o.status=?');bind.push(st)}
  const q=trimText(params.get('q'),80);
- if(q){const like='%'+q.replace(/[\\%_]/g,c=>'\\'+c)+'%';where.push("(o.code LIKE ? ESCAPE '\\' OR c.name LIKE ? ESCAPE '\\')");bind.push(like,like)}
+ if(q){where.push("(lower(o.code) LIKE ? ESCAPE '\\' OR c.search_key LIKE ? ESCAPE '\\')");bind.push(likeFolded(q),likeFolded(q))}
  const limit=Math.max(1,Math.min(100,Number(params.get('limit'))||25));
  const offset=Math.max(0,Math.min(10000,Number(params.get('offset'))||0));
  const sql=SELECT_ORDER+(where.length?' WHERE '+where.join(' AND '):'')+' GROUP BY o.id ORDER BY o.created_at DESC,o.code DESC LIMIT ? OFFSET ?';
  const {results}=await env.DB.prepare(sql).bind(...bind,limit+1,offset).all();
  const items=results||[];
- return response({ok:true,data:items.slice(0,limit),pagination:{limit,offset,hasMore:items.length>limit}});
+ return response({ok:true,data:items.slice(0,limit).map(o=>hidePaid(user,o)),pagination:{limit,offset,hasMore:items.length>limit}});
 }
 async function loadOrder(env,user,id){
  const order=await env.DB.prepare(SELECT_ORDER+' WHERE o.id=? GROUP BY o.id').bind(id).first();
@@ -123,7 +127,7 @@ async function getOrder(env,user,id){
  (SELECT COALESCE(SUM(d.delivered_kg),0) FROM deliveries d WHERE d.order_line_id=l.id AND d.status='VERIFIED') AS verified_kg,
  (SELECT COALESCE(SUM(d.delivered_kg),0) FROM deliveries d WHERE d.order_line_id=l.id AND d.status='PENDING') AS pending_kg
  FROM order_lines l JOIN products p ON p.id=l.product_id WHERE l.order_id=? ORDER BY l.rowid`).bind(id).all();
- return response({ok:true,data:{...order,lines:results||[]}});
+ return response({ok:true,data:hidePaid(user,{...order,lines:results||[]})});
 }
 async function createOrder(env,user,request){
  if(!WRITE.includes(user.role))return bad('Không được phép tạo đơn hàng',403);

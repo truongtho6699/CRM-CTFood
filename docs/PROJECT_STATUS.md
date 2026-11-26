@@ -193,7 +193,10 @@ Dữ liệu thử nằm trên khách DEMO, sẽ được `demo_cleanup.sql` dọ
 | --- | --- | --- |
 | 1 | Sửa lỗi nhãn lệch trên điện thoại; bỏ thuật ngữ kỹ thuật (D1, Cloudflare, Lưu đồ, mã câu hỏi); gọn thông báo; tên nút cụ thể; menu tài khoản ở góc phải; bỏ nhãn viết HOA; ẩn mã UUID | #10 |
 | 2 | Tổng quan "Việc cần làm" theo vai trò; trang chi tiết khách hàng (đơn hàng, công nợ, phiếu thu, chăm sóc; tạo đơn/lập phiếu thu/thêm việc tại chỗ); ô chọn khách hàng và sản phẩm có gõ tìm; danh sách 2 dòng trên điện thoại cho đơn hàng, khách hàng, công nợ, phiếu thu | #11 |
+| 3 | Thanh tiến trình Đặt → Giao → Thu trên danh sách và chi tiết đơn, chi tiết khách hàng; tìm kiếm không phân biệt hoa/thường và có dấu/không dấu ("suon" ra "Sườn non heo", "dai viet" ra "Đại Việt"); lọc khách hàng theo trạng thái, khu vực, Sales và sắp xếp theo tên | (PR bước 3) |
 
 API mới ở bước 2: `/api/worklist`, `/api/customers/:id/overview`, `/api/activities` (tạo, đánh dấu xong) — có test phạm vi vai trò (`tests/workspace-api.test.mjs`).
 
-**Còn lại (bước 3):** thanh tiến trình Đặt → Giao → Thu trên đơn hàng; tìm kiếm không phân biệt hoa thường với chữ có dấu (SQLite chỉ không phân biệt với chữ không dấu); lọc/sắp xếp danh sách khách hàng theo trạng thái, khu vực, Sales.
+Bước 3 cần **migration 0008** (`0008_search_keys.sql`): thêm cột `search_key` (tên/điện thoại/MST đã bỏ dấu, viết thường) cho khách hàng, sản phẩm, khách tiềm năng, có trigger tự cập nhật; thêm chỉ mục khu vực, trạng thái. API mới: `/api/customers/facets`; `/api/customers` nhận `status`, `region`, `owner`, `sort=name|recent`; đơn hàng trả thêm `delivered_value` (giá trị đã giao xác nhận) và `paid` (đã phân bổ thu; ẩn với Kho). Test: `tests/search.test.mjs`.
+
+Cách tính tiến trình: **Giao %** = kg trên phiếu cân đã xác nhận / kg đặt; **Thu %** = tiền phiếu thu đã phân bổ vào đơn / giá trị đã giao (chưa VAT). Tiền thu trước khi giao hiển thị là "Đã cọc". Nếu Ban giám đốc muốn tính Thu % trên giá trị có VAT hoặc trên toàn bộ giá trị đơn, cần sửa công thức.

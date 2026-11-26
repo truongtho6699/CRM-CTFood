@@ -1,7 +1,7 @@
 // FIN-01 — Phiếu thu, phân bổ vào đơn, công nợ (giả định tạm, chờ Kế toán/BGĐ chốt E01–E03, C06).
 // KPI-01 — Báo cáo doanh số/sản lượng từ số kg thực giao đã được Kế toán xác nhận (giả định G01).
 // Mọi số tiền là số nguyên (đồng). Công nợ = giá trị giao đã xác nhận (kg × giá chưa VAT) − tiền đã phân bổ.
-import {response,bad,fail,trimText,readJson} from './http.js';
+import {response,bad,fail,trimText,readJson,likeFolded,foldText} from './http.js';
 
 export const PAYMENT_TYPE={DEPOSIT:'Đặt cọc',PAYMENT:'Thanh toán'};
 export const METHOD={BANK:'Chuyển khoản',CASH:'Tiền mặt'};
@@ -23,7 +23,6 @@ function isoDate(v,label){
 }
 export function todayVN(){return new Date(Date.now()+7*3600*1000).toISOString().slice(0,10)}
 export function addDays(d,n){return new Date(Date.parse(d+'T00:00:00Z')+n*DAY).toISOString().slice(0,10)}
-function likeOf(q){return '%'+q.replace(/[\\%_]/g,c=>'\\'+c)+'%'}
 function dbError(e){
  const msg=String(e?.message||'');
  if(/ctfood_allocation_exceeds_payment/.test(msg))return bad('Tổng tiền phân bổ vượt số tiền của phiếu thu',400);
@@ -80,8 +79,8 @@ async function listReceivables(env,user,params){
  const totals=summarize(rows,credits);
  if(params.get('open')==='1')rows=rows.filter(r=>r.balance!==0);
  if(params.get('overdue')==='1')rows=rows.filter(r=>r.overdue_days>0);
- const q=trimText(params.get('q'),80).toLowerCase();
- if(q)rows=rows.filter(r=>(r.code+' '+r.customer_name).toLowerCase().includes(q));
+ const q=foldText(trimText(params.get('q'),80));
+ if(q)rows=rows.filter(r=>foldText(r.code+' '+r.customer_name).includes(q));
  rows.sort((a,b)=>b.overdue_days-a.overdue_days||b.balance-a.balance);
  return response({ok:true,data:rows,credits,totals,as_of:todayVN()});
 }
@@ -105,7 +104,7 @@ async function listPayments(env,user,params){
  const st=trimText(params.get('status'),10).toUpperCase();
  if(st){if(!['ACTIVE','VOID'].includes(st))return bad('Trạng thái lọc không hợp lệ',400);where.push('p.status=?');bind.push(st)}
  const q=trimText(params.get('q'),80);
- if(q){where.push("(c.name LIKE ? ESCAPE '\\' OR p.reference LIKE ? ESCAPE '\\')");bind.push(likeOf(q),likeOf(q))}
+ if(q){where.push("(c.search_key LIKE ? ESCAPE '\\' OR lower(p.reference) LIKE ? ESCAPE '\\')");bind.push(likeFolded(q),likeFolded(q))}
  const limit=Math.max(1,Math.min(100,Number(params.get('limit'))||25));
  const offset=Math.max(0,Math.min(10000,Number(params.get('offset'))||0));
  const {results}=await env.DB.prepare(SELECT_PAYMENT+(where.length?' WHERE '+where.join(' AND '):'')+' ORDER BY p.payment_date DESC,p.created_at DESC LIMIT ? OFFSET ?').bind(...bind,limit+1,offset).all();

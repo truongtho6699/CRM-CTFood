@@ -134,6 +134,12 @@ function MasterList({entity,role,user,onSaved}){
  const [viewing,setViewing]=useState(null);
  const isCustomers=entity==='customers';
  const [sequence,setSequence]=useState(0);
+ const [filters,setFilters]=useState({status:'',region:'',owner:'',sort:'recent'});
+ const [facets,setFacets]=useState({regions:[],owners:[]});
+ const setFilter=(k,v)=>{setPage(0);setFilters(f=>({...f,[k]:v}))};
+ const filterQs=isCustomers?Object.entries(filters).filter(([,v])=>v).map(([k,v])=>'&'+k+'='+encodeURIComponent(v)).join(''):'';
+ const filtered=isCustomers&&(filters.status||filters.region||filters.owner);
+ useEffect(()=>{if(!isCustomers)return;jsonFetch('/api/customers/facets').then(d=>setFacets(d.data||{regions:[],owners:[]})).catch(()=>{})},[isCustomers,sequence]);
  const canWrite=ROLE_WRITE.has(role)||(role==='SALES'&&entity!=='products');
  const reqId=useRef(0);
  useEffect(()=>{
@@ -143,7 +149,7 @@ function MasterList({entity,role,user,onSaved}){
  useEffect(()=>{
   const current=++reqId.current;const controller=new AbortController();
   setLoading(true);setError('');
-  const url='/api/'+entity+'?limit='+PAGE_SIZE+'&offset='+(page*PAGE_SIZE)+'&q='+encodeURIComponent(query);
+  const url='/api/'+entity+'?limit='+PAGE_SIZE+'&offset='+(page*PAGE_SIZE)+'&q='+encodeURIComponent(query)+filterQs;
   fetch(url,{credentials:'same-origin',headers:{Accept:'application/json'},signal:controller.signal}).then(async res=>{
    const data=await res.json().catch(()=>({}));
    if(!res.ok||!data.ok)throw Error(data.error||'Không tải được dữ liệu (HTTP '+res.status+')');
@@ -151,7 +157,7 @@ function MasterList({entity,role,user,onSaved}){
    if(current===reqId.current){setRows(data.data);setHasMore(Boolean(data.pagination?.hasMore));}
   }).catch(err=>{if(err.name!=='AbortError'&&current===reqId.current){setRows([]);setError(err.message)}}).finally(()=>{if(current===reqId.current)setLoading(false)});
   return()=>controller.abort();
- },[entity,page,query,sequence]);
+ },[entity,page,query,sequence,filterQs]);
  const reload=()=>setSequence(i=>i+1);
  const save=async (payload,old)=>{
   const method=old?'PATCH':'POST',path='/api/'+entity+(old?'/'+encodeURIComponent(old.id):'');
@@ -180,9 +186,16 @@ function MasterList({entity,role,user,onSaved}){
   </div>
   {flash&&<Notice type="success">{flash}</Notice>}
   <div className="ct-toolbar"><label className="ct-search"><Search size={18}/><span className="sr-only">Tìm kiếm {schema.title.toLowerCase()}</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={entity==='customers'?'Tìm theo tên, số điện thoại hoặc mã số thuế...':'Tìm theo tên '+schema.title.toLowerCase()+'...'} aria-label={'Tìm kiếm '+schema.title}/></label></div>
+  {isCustomers&&<div className="ct-filterbar" role="group" aria-label="Lọc khách hàng">
+   <div className="ct-seg" role="group" aria-label="Trạng thái">{[['','Tất cả'],['ACTIVE','Đang giao dịch'],['PROSPECT','Tiềm năng'],['INACTIVE','Ngừng']].map(([v,l])=><button key={v} type="button" aria-pressed={filters.status===v} onClick={()=>setFilter('status',v)}>{l}</button>)}</div>
+   <select value={filters.region} onChange={e=>setFilter('region',e.target.value)} aria-label="Khu vực"><option value="">Mọi khu vực</option>{facets.regions.map(r=><option key={r.region} value={r.region}>{r.region} ({r.n})</option>)}</select>
+   {role!=='SALES'&&<select value={filters.owner} onChange={e=>setFilter('owner',e.target.value)} aria-label="Sales phụ trách"><option value="">Mọi Sales</option>{facets.owners.map(o=><option key={o.email} value={o.email}>{o.name} ({o.n})</option>)}</select>}
+   <select value={filters.sort} onChange={e=>setFilter('sort',e.target.value)} aria-label="Sắp xếp"><option value="recent">Mới thêm gần đây</option><option value="name">Tên A → Z</option></select>
+   {filtered&&<button type="button" className="ct-linkbtn" onClick={()=>{setPage(0);setFilters(f=>({...f,status:'',region:'',owner:''}))}}>Bỏ lọc</button>}
+  </div>}
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải danh sách</strong><p>{error}</p><button className="ct-btn secondary" onClick={reload}>Thử lại</button></div>
    :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2,3].map(i=><div className="ct-skeleton" key={i}/>)}</div>
-   :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>{query?'Không tìm thấy kết quả':'Chưa có dữ liệu'}</strong><p>{query?'Hãy thử từ khóa khác.':'Có thể tạo bản ghi đầu tiên nếu tài khoản được cấp quyền.'}</p></div>
+   :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>{query||filtered?'Không tìm thấy kết quả':'Chưa có dữ liệu'}</strong><p>{query||filtered?'Hãy thử từ khóa khác hoặc bỏ bớt bộ lọc.':'Có thể tạo bản ghi đầu tiên nếu tài khoản được cấp quyền.'}</p></div>
    :<>
     <div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr>{cols.map(([k,label])=><th scope="col" key={k} className={COMPACT[k]==='ct-sm-hide'?'ct-sm-hide':undefined}>{label}</th>)}{(canWrite||isCustomers)&&<th scope="col">Thao tác</th>}</tr></thead>
      <tbody>{rows.map(row=><tr key={row.id} className={isCustomers?'ct-row-link':undefined} tabIndex={isCustomers?0:undefined} onClick={isCustomers?e=>{if(!e.target.closest('button'))setViewing(row.id)}:undefined} onKeyDown={isCustomers?e=>{if(e.key==='Enter'&&e.target===e.currentTarget)setViewing(row.id)}:undefined}>

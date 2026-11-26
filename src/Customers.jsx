@@ -2,7 +2,7 @@
 // và tạo đơn / lập phiếu thu / thêm việc chăm sóc ngay tại đó.
 import React,{useEffect,useId,useState} from 'react';
 import {X,Plus,Pencil,ShoppingCart,Wallet,CheckCircle2,Phone,MapPin} from 'lucide-react';
-import {Status,Notice,jsonFetch} from './ui.jsx';
+import {Status,Notice,jsonFetch,MiniProgress} from './ui.jsx';
 import {OrderForm,OrderDetail} from './Orders.jsx';
 import {PaymentForm} from './Finance.jsx';
 
@@ -80,7 +80,7 @@ export function CustomerDetail({id,user,statusLabel,onClose,onEdit,onChanged}){
      {tab==='orders'&&(data.orders.length===0?<p className="ct-muted">Khách chưa có đơn hàng.</p>
       :<ul className="ct-item-list">{data.orders.map(o=><li key={o.id}><button onClick={()=>setChild({kind:'order',id:o.id})}>
         <span className="ct-item-main"><strong>{o.code}</strong><small>{o.order_type==='OFFER'?'Offer':'Hàng sẵn kho'}, giao dự kiến {day(o.expected_date)}</small></span>
-        <span className="ct-item-side"><strong>{vnd(o.total_amount)} đ</strong><small>Đã giao {kg(o.delivered_kg)} / {kg(o.total_kg)} kg</small></span>
+        <span className="ct-item-side"><strong>{vnd(o.total_amount)} đ</strong><MiniProgress order={o}/></span>
         <Status value={ORDER_STATUS[o.status]}/></button></li>)}</ul>)}
      {tab==='money'&&r&&<>
       {r.rows.length===0?<p className="ct-muted">Chưa phát sinh công nợ (chưa có phiếu cân được xác nhận hoặc chưa thu tiền).</p>

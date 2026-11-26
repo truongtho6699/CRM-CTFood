@@ -160,3 +160,18 @@ test('tìm đơn theo mã hoặc tên khách',async()=>{
  assert.deepEqual((await call(env,'admin@ct.test','/api/orders?q='+a.json.data.code)).json.data.map(o=>o.id),[a.json.data.id]);
  assert.equal((await call(env,'admin@ct.test','/api/orders?q='+encodeURIComponent('Khách B'))).json.data.length,1);
 });
+
+test('tiến trình đơn: giá trị đã giao xác nhận và đã thu; Kho không thấy số tiền đã thu',async()=>{
+ const {db,env}=setup();
+ const a=await call(env,'admin@ct.test','/api/orders',{method:'POST',body:order()});
+ const line=db.prepare('SELECT id FROM order_lines WHERE order_id=? ORDER BY rowid LIMIT 1').get(a.json.data.id).id;
+ db.prepare("INSERT INTO deliveries(id,order_line_id,delivered_kg,delivery_date,status) VALUES('d1',?,1000,'2026-12-01','VERIFIED')").run(line);
+ db.prepare("INSERT INTO payments(id,customer_id,amount,payment_date,payment_type,method,status,created_by,updated_at) VALUES('p1','KH-A',50000000,'2026-12-02','PAYMENT','BANK','ACTIVE','kt@ct.test','v')").run();
+ db.prepare("INSERT INTO payment_allocations(id,payment_id,order_id,amount) VALUES('pa1','p1',?,30000000)").run(a.json.data.id);
+ const d=(await call(env,'admin@ct.test','/api/orders/'+a.json.data.id)).json.data;
+ assert.equal(d.delivered_value,73500000);
+ assert.equal(d.paid,30000000);
+ const w=(await call(env,'kho@ct.test','/api/orders')).json.data[0];
+ assert.ok(!('paid' in w));
+ assert.equal(w.delivered_value,73500000);
+});
