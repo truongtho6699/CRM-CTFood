@@ -8,8 +8,8 @@ function normalize(type,raw){
   const legacy_code=required(val(raw.legacy_code,60),'mã khách hàng/NCC'),name=required(val(raw.name),'tên khách hàng/NCC');
   const tax_code=val(raw.tax_code,35)||null,partner_type=val(raw.partner_type||'CUSTOMER',12).toUpperCase(),email=val(raw.email,254);
   if(!['CUSTOMER','SUPPLIER','BOTH'].includes(partner_type))throw fail('Loại đối tác không hợp lệ',400);
-  if(email&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))throw fail('Email không hợp lệ',400);
-  const days=val(raw.credit_days,20).replace(/\\s*ngày$/i,''),credit_days=days===''?0:Number(days);
+  if(email&&!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(email))throw fail('Email không hợp lệ',400);
+  const days=val(raw.credit_days,20).replace(/\s*ngày$/i,''),credit_days=days===''?0:Number(days);
   if(!Number.isInteger(credit_days)||credit_days<0||credit_days>3650)throw fail('Công nợ phải là số ngày 0–3650',400);
   return {legacy_code,name,tax_code,partner_type,email,credit_days,address:val(raw.address,300),contact_name:val(raw.contact_name,120),contact_phone:val(raw.contact_phone,40),source_sales_name:val(raw.source_sales_name,120)};
  }
@@ -20,7 +20,7 @@ function normalize(type,raw){
   if(rawKg){
    if(rawKg.toLowerCase().includes('mã cân'))conversion_note=rawKg;
    else{
-    conversion_kg=Number(rawKg.toLowerCase().replace(/\\s*kg$/,'').replace(',','.').trim());
+    conversion_kg=Number(rawKg.toLowerCase().replace(/\s*kg$/,'').replace(',','.').trim());
     if(!Number.isFinite(conversion_kg)||conversion_kg<=0||conversion_kg>1000000000)throw fail('Khối lượng quy đổi không hợp lệ',400);
    }
   }
