@@ -1,0 +1,89 @@
+# CT FOOD CRM — TIẾN ĐỘ VÀ DANH SÁCH CÔNG VIỆC
+
+**Ngày chốt báo cáo:** 26/11/2026 (giờ Việt Nam)  
+**Môi trường:** https://crm-ctfood.pages.dev  
+**Repo:** https://github.com/truongtho6699/CRM-CTFood  
+**Trạng thái chung:** MVP nội bộ V0.4, đã triển khai Cloudflare Pages và D1; **chưa nghiệm thu vận hành toàn diện**.  
+**Nguyên tắc:** Trạng thái “đã có mã” hoặc “build thành công” **không đồng nghĩa** “đã UAT end-to-end”; nội dung đề xuất không được ghi là đã phát triển.
+
+## 1. Kiểm chứng trạng thái tại thời điểm lập báo cáo
+
+- Cloudflare Pages production: deployment gần nhất được xác nhận **success/deploy** ở commit `64fc8727d5ef47136f10138a796b33c993c87f18` (26/11/2026 UTC; kiểm tra trực tiếp bằng Cloudflare API). Các deploy trước `7c6f543...` và `14d235c...` cũng báo success. Không khẳng định kiểm thử trình duyệt đã đạt.
+- Cloudflare Access ứng dụng `CT FOOD CRM - Authorized Users` bảo vệ `crm-ctfood.pages.dev`; **chỉ Google IdP** trong `allowed_idps`, `auto_redirect_to_identity=true`. Quy tắc Access hiện chỉ cho phép email ADMIN `truongtho53@gmail.com`. Provider Cloudflare OTP vẫn có thể tồn tại trong danh mục IdP toàn tài khoản nhưng **không còn là phương thức của ứng dụng CRM**.
+- Trang `/login` là một Access app khác, policy `bypass` công khai đúng đường dẫn đăng nhập; CRM tại `/` và `/api` tiếp tục có Access bảo vệ. `functions/login.js` phục vụ UI login độc lập.
+- D1 `ctfood-crm` (ID `31866ea2-8f55-4dcb-b504-58bb3f3059b9`), đọc **chỉ SELECT**: `app_users=4`, `customers=12`, `leads=8`, `products=10`, `audit_log=0`. Kiểm tra `id LIKE 'DEMO-%'` cho thấy **toàn bộ 12/12 khách hàng, 8/8 leads, 10/10 sản phẩm là dữ liệu DEMO**; thêm `activities=3` dòng demo; `orders=0`, `deliveries=0`, `payments=0`, `containers=0`. Không suy luận đã nhập dữ liệu kinh doanh thật. Lưu ý 4 tài khoản gồm tài khoản quản trị và tài khoản mẫu ngừng hoạt động theo `README.md`.
+- Đọc cấu trúc D1: `products.updated_at` tồn tại, có 2 trigger trên `customers` — bằng chứng kỹ thuật bổ trợ cho thay đổi migration 0003, **không thay thế nghiệm thu dữ liệu**.
+- GitHub có workflow `.github/workflows/ci.yml` chạy `npm test` và `npm run build`. Các run thành công trước đây được ghi ở `PROJECT_CONTEXT.md` (44252433570 và 44252689070). **Chưa xác minh kết quả run CI gắn riêng commit production mới nhất trong lần rà soát này.**
+
+## 2. CHECKLIST ĐÃ THỰC HIỆN / CÓ MÃ / CẤU HÌNH
+
+| ID | Công việc | Trạng thái | Bằng chứng / ghi chú |
+| --- | --- | --- | --- |
+| INF-01 | Khởi tạo repo và triển khai React/Vite + Cloudflare Pages | ✅ Đã triển khai | `src/CRMApp.jsx`, `package.json`; Pages success |
+| INF-02 | Cloudflare D1 + Pages Functions kết nối API | ✅ Đã cấu hình | `worker/src/index.js`, `functions/api/[[path]].js`, D1 hiện có dữ liệu demo |
+| INF-03 | Migration bảng lõi, leads, chuẩn mã trạng thái và updated_at | ✅ Có mã; DB đã có dấu hiệu áp dụng | `worker/migrations/0001_init.sql`, `0002_leads.sql`, `0003_status_codes_versioning.sql`; kiểm tra schema chỉ đọc |
+| AUTH-01 | Google OAuth qua Cloudflare Zero Trust Access | ✅ Đã cấu hình | Google IdP duy nhất trên Access app CRM; vẫn cần UAT thực tế |
+| AUTH-02 | Loại bỏ Cloudflare email OTP **khỏi lựa chọn đăng nhập CRM** | ✅ Đã cấu hình | `allowed_idps` chỉ chứa Google; không xóa IdP toàn tài khoản |
+| AUTH-03 | Trang đăng nhập CT FOOD riêng `/login` | ✅ Đã triển khai | `functions/login.js`, Access bypass chỉ tại `/login` |
+| AUTH-04 | Màn hình có 2 phương thức User/Password và Google | 🟡 Đã có UI | User/Password hiện **disabled**, Google dẫn tới tên miền CRM được bảo vệ |
+| SEC-01 | Kiểm tra JWT Access + ánh xạ tài khoản D1, RBAC theo vai trò | ✅ Có mã và test tự động | `worker/src/index.js`, `tests/rbac-api.test.mjs` |
+| SEC-02 | Hạn chế Sales xem trường tài chính; tách quyền Logistics | ✅ Có mã và test tự động | API SQL chọn cột theo vai trò; UI phân hệ |
+| SEC-03 | Kiểm soát sửa trùng bằng `expected_updated_at`, chuẩn hóa trạng thái | ✅ Có mã và test | Worker, `tests/migration-0003.test.mjs`, `README.md` |
+| UI-01 | Giao diện CRM V0.4: Dashboard D1 và menu phân hệ | ✅ Có mã / đã deploy | `src/CRMApp.jsx`, `src/crm-v04.css` |
+| UI-02 | Danh sách khách hàng, lead, sản phẩm: tìm kiếm, 25 dòng/trang, giao diện mobile | ✅ Có mã / đã deploy | `src/CRMApp.jsx`; chưa có UAT trên thiết bị thật |
+| CRUD-01 | GET/POST/PATCH cho 3 danh mục khách hàng, lead, sản phẩm | ✅ Có mã API và UI | `worker/src/index.js`; **chưa xác nhận end-to-end trên tài khoản ADMIN thật** |
+| QA-01 | Kiểm thử in-memory cho migration, bảo mật API, RBAC và trang login | ✅ Có bộ test | `tests/*.test.mjs`, CI workflow; không dùng DB production |
+| DATA-01 | Bộ dữ liệu DEMO và script dọn DEMO | ✅ Có mã / D1 hiện có DEMO | `worker/seeds/demo_seed.sql`, `demo_cleanup.sql`; **chưa chạy dọn** |
+| DOC-01 | Tài liệu bối cảnh và UAT | ✅ Có tài liệu | `PROJECT_CONTEXT.md`, `docs/UAT_D1_V02.md`, `docs/UIUX_V04_RELEASE.md` |
+
+**Lưu ý về trạng thái:** Các mục có mã hoặc CI đạt không tự động được đánh dấu “nghiệm thu nghiệp vụ”.
+
+## 3. CHECKLIST CHƯA HOÀN THÀNH / CHƯA NGHIỆM THU
+
+| Ưu tiên | ID | Hạng mục | Trạng thái và điều kiện hoàn tất | Phụ trách đề xuất |
+| --- | --- | --- | --- | --- |
+| P0 | AUTH-05 | Đăng nhập bằng User/Password thực sự | ❌ Chưa có backend mật khẩu; cần chốt kiến trúc IdP hoặc dịch vụ auth có hash, rate-limit, lockout, reset, cookie HttpOnly, audit, session revoke, UAT | DEV + quản trị |
+| P0 | UAT-01 | Google OAuth end-to-end trên ứng dụng | ⏳ Chưa có bằng chứng phiên ADMIN thực tế: Google → Dashboard → `/api/me` đúng email/role | ADMIN + QA |
+| P0 | UAT-02 | CRUD và audit end-to-end | ⏳ Chưa xác minh tạo/sửa/tải lại trên D1 bằng trình duyệt đã xác thực; phải đối chiếu `audit_log` và quyền | QA + nghiệp vụ |
+| P0 | DATA-02 | Xác nhận dữ liệu DEMO và kế hoạch trước khi nhập thật | ❌ Chưa dọn DEMO; **không chạy cleanup khi chưa sao lưu và được chủ quản phê duyệt** | DATA + quản trị |
+| P0 | DATA-03 | Module import lịch sử từ template Google Sheets/Excel | ❌ Chưa phát triển. Đã phân tích mẫu khách hàng/NCC, hàng hóa, container, giao dịch; cần staging, mapping, phát hiện trùng, duyệt, audit và rollback | BA + DATA + DEV |
+| P0 | BIZ-01 | Chốt BRD các quy tắc đơn hàng, giao thực, VAT, công nợ, giá vốn, hoa hồng, KPI | ❌ Các câu hỏi P0 trong tab `Rivew 1` còn phải chốt; **không bật ghi tài chính** | BGĐ + Sales + Kế toán |
+| P1 | ORDER-01 | CRUD đơn hàng nhiều dòng, trạng thái, giá bán và duyệt ngoại lệ | ❌ Chưa phát hành nghiệp vụ thật | BA + DEV |
+| P1 | LOG-01 | Container, tồn kho, phiếu cân, nhiều lần giao và đối chiếu số kg thực tế | ❌ Chưa phát hành ghi vận hành thật | Kho + DEV |
+| P1 | FIN-01 | Đặt cọc, thu tiền từng phần, công nợ, đối soát, hóa đơn | ❌ Chưa phát hành ghi tài chính thật | Kế toán + DEV |
+| P1 | KPI-01 | Kết nối dashboard KPI hiện có | ❌ Chưa tích hợp; cần bảo toàn hệ thống KPI độc lập | Quản trị KPI + DATA |
+| P1 | SEC-04 | UAT RBAC bằng tài khoản Sales/Logistics/Kế toán thật | ⏳ Test tự động có nhưng chưa kiểm thử qua phiên thực tế | QA + quản trị |
+| P1 | OPS-01 | Sao lưu, kiểm thử restore, khóa kỳ, rollback và giám sát | ❌ Chưa có biên bản nghiệm thu khôi phục DB / vận hành | DEVOPS |
+| P1 | QA-02 | Lighthouse/Web Vitals, mobile, tải dữ liệu lớn và benchmark API | ❌ Chưa đo/kiểm thử với người dùng thật | UIUX + QA |
+| P1 | SEC-05 | Kiểm tra bảo vệ toàn bộ đường dẫn preview và domain phụ | ⏳ Chưa có nghiệm thu đầy đủ bằng browser/kiểm thử bảo mật | DEVOPS + QA |
+| P2 | ADM-01 | Màn hình quản lý người dùng, cấp quyền, thu hồi quyền | ❌ Chưa có phân hệ quản trị người dùng hoàn chỉnh | BA + DEV |
+| P2 | DOC-02 | Đồng bộ `README.md`, `DEPLOYMENT.md` và các tài liệu cũ đang nhắc `localStorage`/Cloudflare OTP | ⏳ Chưa đồng bộ toàn bộ; **ưu tiên tài liệu trạng thái hiện tại này** | DEV + BA |
+
+## 4. LỘ TRÌNH ĐỀ XUẤT
+
+| Giai đoạn | Công việc cần ưu tiên | Đầu ra nghiệm thu |
+| --- | --- | --- |
+| **GĐ1 — An toàn & xác thực** | AUTH-05, UAT-01, UAT-02, SEC-04, SEC-05 | Người dùng đăng nhập được theo phương thức đã duyệt; JWT/RBAC và CRUD đạt; không lộ dữ liệu |
+| **GĐ2 — Chuẩn dữ liệu & import** | DATA-02, DATA-03; chốt ánh xạ mã KH, hàng, cont, Sale; xác nhận giá, ngày, thuế | Upload → staging → kiểm tra lỗi/trùng → duyệt → ghi D1 → đối soát và rollback |
+| **GĐ3 — Nghiệp vụ bán/giao** | BIZ-01, ORDER-01, LOG-01 | Đơn nhiều dòng, giao nhiều lần, số lượng thực giao được xác nhận |
+| **GĐ4 — Tài chính & KPI** | FIN-01, KPI-01, OPS-01, QA-02 | Công nợ/giá vốn/KPI khớp nguồn, phân quyền, khóa kỳ, backup/restore và báo cáo hiệu năng |
+
+**Điều kiện mở dữ liệu thật:** Phải có sao lưu/khôi phục được thử, nguồn dữ liệu hợp lệ, người duyệt dữ liệu, phân quyền và kiểm thử đối soát; tránh tự nhập trực tiếp vào bảng D1 sản xuất.
+
+## 5. QUY ƯỚC CẬP NHẬT
+
+- ✅ **Đã triển khai / có bằng chứng:** có repo/Cloudflare/D1 hoặc kết quả test rõ ràng.
+- 🟡 **Có giao diện / code nhưng chưa vận hành hoặc chưa nghiệm thu:** không mô tả là đã hoàn thành nghiệp vụ.
+- ⏳ **Chờ kiểm chứng:** cần chứng cứ từ UAT, log/ảnh, người phụ trách.
+- ❌ **Chưa thực hiện:** chưa có module/hạ tầng nghiệp vụ hoặc chưa đủ quyết định thiết kế.
+- Không sửa các số DEMO bằng tay để biến thành dữ liệu thật.
+- Sau mỗi đợt thay đổi: ghi commit, deployment, ca UAT, lỗi tồn và quyết định nghiệp vụ; cập nhật bảng trên trước khi tuyên bố hoàn tất.
+
+## 6. THAM CHIẾU
+
+- `PROJECT_CONTEXT.md` — lịch sử quyết định và diễn biến (có các snapshot cũ).
+- `docs/UAT_D1_V02.md`, `docs/UIUX_V04_RELEASE.md` — kiểm thử chức năng/UI.
+- `docs/AUTH_DUAL_METHOD.md` — lưu ý kiến trúc đăng nhập (một số câu mô tả Cloudflare OTP là trạng thái lịch sử, đã được thay bằng Google-only ở Access app).
+- `README.md`, `DEPLOYMENT.md` — hướng dẫn cũ; cần đối chiếu theo thực trạng ngày 26/11.
+- Template/Review 1: https://docs.google.com/spreadsheets/d/1cbl_q8uxH_IlGil5XLxU2fOGrqRt9_-hP42wWZTAiuQ/edit
+- GitHub workflow: https://github.com/truongtho6699/CRM-CTFood/actions
