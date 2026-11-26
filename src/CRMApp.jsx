@@ -1,6 +1,6 @@
 import React,{useEffect,useId,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {LayoutDashboard,Users,UserPlus,Package,Boxes,FolderOpen,ChevronDown,ShoppingCart,Truck,Wallet,ChartColumn,Settings,Search,Plus,Download,RefreshCcw,Menu,X,AlertTriangle,Lock,Database,CheckCircle2,ChevronLeft,ChevronRight,LogOut,ArrowRight,Clock3,ShieldCheck,Info,UserCog,CircleUser,KeyRound,ExternalLink} from 'lucide-react';
+import {LayoutDashboard,Users,UserPlus,Package,Boxes,FolderOpen,ChevronDown,ShoppingCart,Truck,Wallet,ChartColumn,Settings,Search,Plus,Download,RefreshCcw,Menu,X,AlertTriangle,Lock,Database,CheckCircle2,ChevronLeft,ChevronRight,LogOut,ArrowRight,Clock3,ShieldCheck,Info,UserCog,CircleUser,KeyRound,ExternalLink,FileSpreadsheet} from 'lucide-react';
 import './crm-v04.css';
 import {LoginPanel} from './AuthGateway.jsx';
 import {SCHEMAS} from './data.js';
@@ -11,6 +11,7 @@ import {PaymentsPage,ReportsPage} from './Finance.jsx';
 import {CustomerDetail} from './Customers.jsx';
 import {WorkDashboard} from './WorkDashboard.jsx';
 import {CatalogHome,ContainerCatalog} from './Catalogs.jsx';
+import {AdminExcelImport} from './AdminExcelImport.jsx';
 
 const LIVE=['customers','leads','products'];
 const CATALOG_NAV=[{id:'customers',name:'Khách hàng / NCC',icon:Users},{id:'products',name:'Hàng hóa',icon:Package},{id:'containers',name:'Container / Lô hàng',icon:Boxes}];
@@ -27,7 +28,7 @@ const NAV=[
 ];
 // Khớp ROLES trong worker/src/index.js.
 const ROLE_LABEL={ADMIN:'Quản trị hệ thống',BOD:'Ban Giám đốc',ACCOUNTING:'Kế toán',SALES_MANAGER:'Trưởng phòng kinh doanh',SALES:'Nhân viên kinh doanh',SALES_ADMIN:'Sale Admin',LOGISTICS:'Kho / Logistics'};
-const ADMIN_NAV={id:'users',name:'Quản lý tài khoản',icon:UserCog};
+const ADMIN_NAV=[{id:'imports',name:'Nhập dữ liệu Excel',icon:FileSpreadsheet},{id:'users',name:'Quản lý tài khoản',icon:UserCog}];
 const ACCOUNT_NAV=[{id:'profile',name:'Thông tin tài khoản',icon:CircleUser},{id:'password',name:'Đổi mật khẩu',icon:KeyRound}];
 // Mô tả quyền theo đúng kiểm soát ở API (worker/src/index.js).
 const ROLE_SCOPE={
@@ -49,7 +50,7 @@ const STATUS_LABEL={ACTIVE:'Đang giao dịch',PROSPECT:'Tiềm năng',INACTIVE:
 const STAGE_LABEL={NEW:'Mới',CONTACTING:'Đang liên hệ',QUOTED:'Đã báo giá',CONVERTED:'Chuyển đổi',REJECTED:'Không phù hợp'};
 const getRoute=()=>{
  const page=(window.location.hash||'#/dashboard').replace(/^#\/?/,'').split('?')[0];
- return [...NAV,...CATALOG_NAV,...ACCOUNT_NAV,ADMIN_NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
+ return [...NAV,...CATALOG_NAV,...ACCOUNT_NAV,...ADMIN_NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
 };
 function safeCSV(data,label){
  if(!data.length)return;
@@ -392,8 +393,8 @@ function CRMApp(){
  const isAdmin=auth.user.role==='ADMIN';
  // Kho/Logistics không xem khách tiềm năng và tài chính (API cũng chặn).
  const permittedNav=NAV.filter(item=>!(auth.user.role==='LOGISTICS'&&['leads','payments','kpi'].includes(item.id)));
- const adminNav=isAdmin?[ADMIN_NAV]:[];
- const selectedPage=(auth.user.role==='LOGISTICS'&&['leads','payments','kpi'].includes(route))||(route==='users'&&!isAdmin)?'dashboard':route;
+ const adminNav=isAdmin?ADMIN_NAV:[];
+ const selectedPage=(auth.user.role==='LOGISTICS'&&['leads','payments','kpi'].includes(route))||(['users','imports'].includes(route)&&!isAdmin)?'dashboard':route;
  const current=[...permittedNav,...CATALOG_NAV,...ACCOUNT_NAV,...adminNav,...LOCKED].find(x=>x.id===selectedPage)||permittedNav[0];
  const navButton=(item,extra)=>{const ItemIcon=item.icon;return <button key={item.id} className={'ct-nav-item '+(extra||'')+(route===item.id?' active':'')} onClick={()=>changePage(item.id)} aria-current={route===item.id?'page':undefined}><ItemIcon size={19}/><span>{item.name}</span>{extra==='pending'&&<Lock size={14}/>}{item.badge&&<span className="ct-nav-badge">{item.badge}</span>}</button>};
  const Icon=current.icon;
@@ -413,6 +414,7 @@ function CRMApp(){
    <main className="ct-content">
     {selectedPage==='dashboard'?<WorkDashboard user={auth.user} summary={summary} onNavigate={changePage}/>
      :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
+     :selectedPage==='imports'?<AdminExcelImport/>
      :selectedPage==='catalogs'?<CatalogHome onNavigate={changePage}/>
      :selectedPage==='containers'?<ContainerCatalog user={auth.user}/>
      :selectedPage==='orders'?<OrdersPage user={auth.user}/>
