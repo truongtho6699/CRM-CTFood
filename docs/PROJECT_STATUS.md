@@ -241,3 +241,27 @@ Cách tính tiến trình: **Giao %** = kg trên phiếu cân đã xác nhận /
 - [ ] Chưa có bằng chứng UAT đăng nhập Google → tạo/sửa/tải lại các trường template trên trình duyệt.
 - [ ] Chưa chốt ánh xạ Sales nguồn sang `owner_email` và xác minh đơn vị quy đổi dạng `Mã cân` từ phòng ban.
 - [ ] Chưa có biên bản CI cho commit cuối trong lần rà soát (Cloudflare build/deploy là kiểm tra riêng).
+
+
+## Cập nhật 26/11/2026 — Phân hệ Nhập dữ liệu Excel dành riêng cho ADMIN
+
+**Yêu cầu:** Tách nhập Excel khỏi ba danh mục, đặt trong phần Quản trị hệ thống và chỉ tài khoản ADMIN thao tác.
+
+### Đã ghi mã trong repo
+- [x] `src/CRMApp.jsx`: thêm menu **Quản trị → Nhập dữ liệu Excel** (`#/imports`), ẩn với các vai trò không phải ADMIN. Trang chỉ render với ADMIN; người truy cập route trực tiếp khi không có quyền được chuyển về Tổng quan.
+- [x] `src/AdminExcelImport.jsx`: tải file, chọn Khách hàng/NCC / Hàng hóa / Container, chọn loại đối tác, xem kết quả kiểm tra từng dòng, đánh dấu xác nhận, ghi D1, xem lịch sử các đợt.
+- [x] `src/importExcelParser.js`: đọc `.xlsx` và `.csv` tại trình duyệt, ánh xạ đúng tiêu đề nguồn, có giới hạn kích thước 3 MB/1.000 dòng. Nội dung file gốc không được gửi lên máy chủ; chỉ gửi các trường được chuẩn hóa để kiểm tra và nhập. Trình duyệt cần hỗ trợ giải nén `deflate-raw` cho xlsx; trường hợp không hỗ trợ, có thể lưu CSV UTF-8.
+- [x] `worker/src/imports.js`: API chỉ ADMIN (`/api/imports/preview`, `/commit`, `/history`); API tự kiểm tra mã trùng, loại dữ liệu, giới hạn mỗi đợt 30 dòng, đối chiếu sản phẩm cho container, ghi INSERT+audit+batch log trong một giao dịch. Không tự sửa/xóa bản ghi cũ, không thay tồn kho/giá vốn.
+- [x] `worker/migrations/0010_import_batches.sql`: bảng lưu lô nhập; migration đã được áp dụng qua Cloudflare API, có ghi trong `d1_migrations`. Có Time Travel bookmark trước migration.
+- [x] `tests/import-parser.test.mjs`, `tests/import-api.test.mjs`: kiểm tra ánh xạ template CSV, quyền ADMIN, chống trùng, lưu audit và lịch sử.
+- [x] Đã thêm style theo bố cục V0.4.
+
+### Kiểm chứng / giới hạn
+- [x] Migration 0010 báo thành công; số đếm D1 trước migration: 13 khách hàng, 10 sản phẩm, 0 container, 17 audit. **Không dùng template nguồn để nhập thử vào Production.**
+- [ ] **Chưa xác nhận Cloudflare deploy của commit cuối** do API Cloudflare trả HTTP 503 trong các lần tra cứu trạng thái mới nhất. Mã nguồn đã có trong repo nhưng không được khẳng định giao diện production đã phát hành.
+- [ ] Chưa có biên bản chạy GitHub Actions cho toàn bộ test ở commit mới nhất và chưa UAT thực tế trong phiên Google ADMIN.
+- [ ] Preview hiện kiểm tra từng đợt nhỏ; khi file rất lớn có thể cần tiếp tục hoàn thiện tiến trình nhập nền và khả năng khôi phục từ dòng cuối.
+- [ ] Với template Container chỉ có tên hàng, mã hàng được đối chiếu bằng tên khớp chính xác; nếu không khớp, hệ thống từ chối và yêu cầu làm sạch dữ liệu hoặc bổ sung mã sản phẩm.
+- [ ] Với template Khách/NCC chưa có cột phân loại: ADMIN chọn loại áp dụng cho lô. Sale nguồn được bảo toàn bằng tên, owner_email tạm là tài khoản ADMIN thực hiện nhập; cần chốt ánh xạ Sales thực tế trước khi sử dụng nghiệp vụ phân quyền sở hữu.
+
+**Không được nhập file dữ liệu thật cho đến khi kiểm thử ứng dụng thực tế, test import-preview/commit và quy trình sao lưu đạt.**
