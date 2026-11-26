@@ -200,3 +200,27 @@ API mới ở bước 2: `/api/worklist`, `/api/customers/:id/overview`, `/api/a
 Bước 3 cần **migration 0008** (`0008_search_keys.sql`): thêm cột `search_key` (tên/điện thoại/MST đã bỏ dấu, viết thường) cho khách hàng, sản phẩm, khách tiềm năng, có trigger tự cập nhật; thêm chỉ mục khu vực, trạng thái. API mới: `/api/customers/facets`; `/api/customers` nhận `status`, `region`, `owner`, `sort=name|recent`; đơn hàng trả thêm `delivered_value` (giá trị đã giao xác nhận) và `paid` (đã phân bổ thu; ẩn với Kho). Test: `tests/search.test.mjs`.
 
 Cách tính tiến trình: **Giao %** = kg trên phiếu cân đã xác nhận / kg đặt; **Thu %** = tiền phiếu thu đã phân bổ vào đơn / giá trị đã giao (chưa VAT). Tiền thu trước khi giao hiển thị là "Đã cọc". Nếu Ban giám đốc muốn tính Thu % trên giá trị có VAT hoặc trên toàn bộ giá trị đơn, cần sửa công thức.
+
+
+## Cập nhật 26/11/2026 — Gộp ba danh mục nền vào menu Quản lý danh mục
+
+**Phạm vi được yêu cầu:** Các tab Google Sheets `Mã khách hàng - NCC`, `Mã hàng hóa`, `Mã công trình` (theo nguồn: https://docs.google.com/spreadsheets/d/1cbl_q8uxH_IlGil5XLxU2fOGrqRt9_-hP42wWZTAiuQ/edit). Đây là ba **danh mục nền**, không phải ba giai đoạn nhập giao dịch và tài chính.
+
+### Đã triển khai trong mã nguồn
+- [x] Menu cha **Quản lý danh mục** thu gọn/mở rộng, với 3 mục: **Khách hàng / NCC**, **Hàng hóa**, **Container / Lô hàng**. Giữ menu Khách tiềm năng riêng, không nhân đôi danh mục đã có.
+- [x] Trang tổng quan danh mục mới `src/Catalogs.jsx` theo giao diện V0.4: 3 thẻ điều hướng, màn hình danh sách Container, tìm kiếm, phân trang, trạng thái trống/tải/lỗi và responsive.
+- [x] Tận dụng API và biểu mẫu D1 đã có của `customers`, `products`; menu đổi nhãn phù hợp template nhưng **chưa bổ sung đủ tất cả các trường đặc thù**.
+- [x] API **POST /api/containers** mới cho ADMIN/BOD/SALES_MANAGER/SALES_ADMIN: kiểm tra mã container 4–64 ký tự, liên kết sản phẩm có thật và đang hoạt động, từ chối trùng, ghi audit trong D1 transaction. Tạo với số lượng và tồn = 0, **không nhập giá vốn/phiếu cân từ mã container**; Sales/Logistics chỉ có quyền xem.
+- [x] Bộ test `tests/catalogs.test.mjs` kiểm tra chống trùng, mã sai, hàng chưa có, phân quyền, không tin giá vốn/số lượng ở input, audit và che giá vốn khỏi Sales.
+- [x] Khắc phục tìm kiếm khi D1 Production **chưa áp dụng migration 0008_search_keys.sql**: API kiểm tra schema và dùng LIKE có escape khi thiếu `search_key`; khi migration có mặt thì dùng tìm kiếm bỏ dấu.
+
+### Ranh giới phải giữ rõ
+- [ ] Chưa phát triển **upload Excel/Google Sheets → staging → mapping → kiểm tra trùng → phê duyệt → ghi chính thức D1/hoàn tác**. Không tuyên bố ba template đã được import.
+- [ ] Bảng `customers` hiện chưa phân biệt khách hàng với nhà cung cấp theo mã loại; chưa có trường riêng tên người liên hệ và điện thoại liên hệ, cũng chưa có cơ chế nhập mã cũ như `KH0001` riêng với UUID.
+- [ ] Bảng `products` chưa có trường hình thức đóng gói và kg/thùng/pallet, cũng chưa chốt mã hàng cũ `HH0018` ↔ ID nội bộ.
+- [ ] Mục `Mã công trình` trong file nguồn thực tế là **số container**, nhưng cần nghiệp vụ xác nhận quy tắc ánh xạ tên hàng → sản phẩm và tình trạng mã.
+- [ ] Danh sách Container hiện chỉ cho tạo mã gắn sản phẩm; chưa mở chỉnh sửa hoặc xóa mã đã tồn tại (để tránh thay đổi dữ liệu liên quan phiếu cân, kho và giá vốn).
+- [ ] UAT thực tế qua tài khoản Google chưa có biên bản; CI/deploy build không thay thế nghiệp vụ.
+- [ ] Cần kiểm tra migration 0008 sau khi backup và được phê duyệt, chưa tự chạy schema change D1 trong đợt này.
+
+**Lưu ý dữ liệu:** Chỉ sửa mã nguồn/triển khai GitHub–Pages; không nạp dữ liệu lịch sử từ spreadsheet hoặc thay đổi bản ghi Production trong lần triển khai này.
