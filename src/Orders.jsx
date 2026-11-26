@@ -1,7 +1,7 @@
 // ORDER-01 — Phân hệ Đơn hàng (thử nghiệm; quy tắc tạm theo docs/PROJECT_STATUS.md mục 8).
 import React,{useEffect,useId,useState} from 'react';
 import {Plus,RefreshCcw,Search,X,Trash2,AlertTriangle,Database,ChevronLeft,ChevronRight,CheckCircle2,Ban,Pencil} from 'lucide-react';
-import {Status,Notice,jsonFetch,TrialNote} from './ui.jsx';
+import {Status,Notice,jsonFetch,TrialNote,Combobox,searchCustomers,searchProducts} from './ui.jsx';
 import {OrderDeliveries} from './Deliveries.jsx';
 
 const STATUS={PENDING:'Chờ giao',SUCCESS:'Thành công',CANCELLED:'Hủy'};
@@ -17,34 +17,29 @@ const stamp=v=>{if(!v)return '—';const d=new Date(v.includes('T')?v:v.replace(
 
 function useEsc(onClose,busy){useEffect(()=>{const f=e=>{if(e.key==='Escape'&&!busy)onClose()};document.addEventListener('keydown',f);return()=>document.removeEventListener('keydown',f)},[onClose,busy])}
 
-function OrderForm({initial,onCancel,onSaved}){
+export function OrderForm({initial,presetCustomer,onCancel,onSaved}){
  const editing=Boolean(initial);
  const heading=useId();
- const [customers,setCustomers]=useState([]);
- const [products,setProducts]=useState([]);
- const [loadErr,setLoadErr]=useState('');
- const blank={product_id:'',contracted_kg:'',unit_price_ex_vat:'',commission_per_kg:''};
+ const blank={product_id:'',product_name:'',contracted_kg:'',unit_price_ex_vat:'',commission_per_kg:''};
+ const [customerName,setCustomerName]=useState(initial?.customer_name||presetCustomer?.name||'');
  const [form,setForm]=useState(initial?{
   customer_id:initial.customer_id,order_type:initial.order_type,expected_date:initial.expected_date||'',delivery_address:initial.delivery_address||'',
   deposit_expected:initial.deposit_expected||'',container_count:initial.container_count||'',note:initial.note||'',
-  lines:initial.lines.map(l=>({product_id:l.product_id,contracted_kg:l.contracted_kg,unit_price_ex_vat:l.unit_price_ex_vat,commission_per_kg:l.commission_per_kg||''}))
- }:{customer_id:'',order_type:'IN_STOCK',expected_date:'',delivery_address:'',deposit_expected:'',container_count:'',note:'',lines:[{...blank}]});
+  lines:initial.lines.map(l=>({product_id:l.product_id,product_name:l.product_name,contracted_kg:l.contracted_kg,unit_price_ex_vat:l.unit_price_ex_vat,commission_per_kg:l.commission_per_kg||''}))
+ }:{customer_id:presetCustomer?.id||'',order_type:'IN_STOCK',expected_date:'',delivery_address:'',deposit_expected:'',container_count:'',note:'',lines:[{...blank}]});
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  useEsc(onCancel,busy);
- useEffect(()=>{(async()=>{
-  try{
-   const [c,p]=await Promise.all([jsonFetch('/api/customers?limit=100'),jsonFetch('/api/products?limit=100')]);
-   setCustomers(c.data.filter(x=>x.status!=='INACTIVE'||x.id===initial?.customer_id));
-   setProducts(p.data.filter(x=>x.active!==0||initial?.lines.some(l=>l.product_id===x.id)));
-  }catch(e){setLoadErr(e.message)}
- })()},[]);
  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
  const setLine=(i,k,v)=>setForm(f=>({...f,lines:f.lines.map((l,j)=>j===i?{...l,[k]:v}:l)}));
  const total=form.lines.reduce((a,l)=>({kg:a.kg+(Number(l.contracted_kg)||0),amount:a.amount+(Number(l.contracted_kg)||0)*(Number(l.unit_price_ex_vat)||0)}),{kg:0,amount:0});
  const num=v=>v===''?0:Number(v);
  const submit=async e=>{
-  e.preventDefault();if(busy)return;setBusy(true);setError('');
+  e.preventDefault();if(busy)return;
+  if(!form.customer_id){setError('Chưa chọn khách hàng. Gõ tên hoặc số điện thoại rồi chọn trong danh sách.');return}
+  const missing=form.lines.findIndex(l=>!l.product_id);
+  if(missing>=0){setError('Dòng '+(missing+1)+': chưa chọn sản phẩm trong danh sách.');return}
+  setBusy(true);setError('');
   const body={...form,deposit_expected:num(form.deposit_expected),container_count:num(form.container_count),
    lines:form.lines.map(l=>({product_id:l.product_id,contracted_kg:Number(l.contracted_kg),unit_price_ex_vat:num(l.unit_price_ex_vat),commission_per_kg:num(l.commission_per_kg)}))};
   try{
@@ -57,10 +52,10 @@ function OrderForm({initial,onCancel,onSaved}){
  return <div className="backdrop ct-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onCancel()}}>
   <section className="modal ct-modal ct-modal-wide" role="dialog" aria-modal="true" aria-labelledby={heading}>
    <div className="ct-modal-title"><div><h2 id={heading}>{editing?'Sửa đơn '+initial.code:'Tạo đơn hàng'}</h2></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onCancel} aria-label="Đóng biểu mẫu"><X size={20}/></button></div>
-   {loadErr&&<Notice type="error">Không tải được danh mục: {loadErr}</Notice>}
+
    <form onSubmit={submit}>
     <div className="formgrid ct-formgrid">
-     <label>Khách hàng<span className="ct-required"> *</span><select required disabled={busy||editing} value={form.customer_id} onChange={e=>set('customer_id',e.target.value)}><option value="">Chọn khách hàng...</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+     <div className="ct-field-label">Khách hàng<span className="ct-required"> *</span>{editing||presetCustomer?<div className="ct-readonly">{customerName}</div>:<Combobox value={form.customer_id} label={customerName} disabled={busy} ariaLabel="Khách hàng" placeholder="Gõ tên hoặc số điện thoại..." search={searchCustomers} onChange={(id,it)=>{set('customer_id',id);setCustomerName(it?.label||'')}}/>}</div>
      <label>Loại đơn<span className="ct-required"> *</span><select required disabled={busy} value={form.order_type} onChange={e=>set('order_type',e.target.value)}>{Object.entries(TYPE).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
      <label>Thời gian dự kiến giao<input type="date" disabled={busy} value={form.expected_date} onChange={e=>set('expected_date',e.target.value)}/></label>
      <label>Địa điểm giao hàng<input disabled={busy} maxLength={300} value={form.delivery_address} onChange={e=>set('delivery_address',e.target.value)}/></label>
@@ -71,7 +66,7 @@ function OrderForm({initial,onCancel,onSaved}){
     <div className="ct-lines-head"><strong>Dòng hàng</strong><button type="button" className="ct-text-button" disabled={busy||form.lines.length>=50} onClick={()=>set('lines',[...form.lines,{...blank}])}><Plus size={15}/> Thêm dòng</button></div>
     <div className="ct-tablebox"><table className="ct-data-table ct-lines-table"><thead><tr><th>Sản phẩm *</th><th>KL dự kiến (kg) *</th><th>Giá chưa VAT (đ/kg) *</th><th>CK/Hoa hồng (đ/kg)</th><th>Thành tiền (đ)</th><th/></tr></thead>
      <tbody>{form.lines.map((l,i)=><tr key={i}>
-      <td data-label="Sản phẩm"><select required disabled={busy} value={l.product_id} onChange={e=>setLine(i,'product_id',e.target.value)} aria-label={'Sản phẩm dòng '+(i+1)}><option value="">Chọn...</option>{products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
+      <td data-label="Sản phẩm"><Combobox value={l.product_id} label={l.product_name} disabled={busy} ariaLabel={'Sản phẩm dòng '+(i+1)} placeholder="Gõ tên sản phẩm..." search={searchProducts} onChange={(id,it)=>setForm(f=>({...f,lines:f.lines.map((x,j)=>j===i?{...x,product_id:id,product_name:it?.label||''}:x)}))}/></td>
       <td data-label="KL dự kiến"><input type="number" required min="0.001" step="0.001" disabled={busy} value={l.contracted_kg} onChange={e=>setLine(i,'contracted_kg',e.target.value)} aria-label={'Khối lượng dòng '+(i+1)}/></td>
       <td data-label="Giá chưa VAT"><input type="number" required min="0" step="1" disabled={busy} value={l.unit_price_ex_vat} onChange={e=>setLine(i,'unit_price_ex_vat',e.target.value)} aria-label={'Giá dòng '+(i+1)}/></td>
       <td data-label="CK/Hoa hồng"><input type="number" min="0" step="1" disabled={busy} value={l.commission_per_kg} onChange={e=>setLine(i,'commission_per_kg',e.target.value)} aria-label={'Hoa hồng dòng '+(i+1)}/></td>
@@ -81,13 +76,13 @@ function OrderForm({initial,onCancel,onSaved}){
      <tfoot><tr><td><strong>Tổng</strong></td><td className="ct-num"><strong>{kg(total.kg)}</strong></td><td/><td/><td className="ct-num"><strong>{vnd(total.amount)}</strong></td><td/></tr></tfoot></table></div>
     <p className="ct-owner-help">Thành tiền = khối lượng dự kiến × giá chưa VAT. Đơn thuộc Sales đang phụ trách khách hàng.</p>
     {error&&<Notice type="error">{error}</Notice>}
-    <div className="ct-modal-actions"><button type="button" disabled={busy} className="ct-btn secondary" onClick={onCancel}>Hủy</button><button type="submit" disabled={busy||Boolean(loadErr)} className="ct-btn primary">{busy?'Đang lưu...':editing?'Lưu thay đổi':'Tạo đơn'}</button></div>
+    <div className="ct-modal-actions"><button type="button" disabled={busy} className="ct-btn secondary" onClick={onCancel}>Hủy</button><button type="submit" disabled={busy} className="ct-btn primary">{busy?'Đang lưu...':editing?'Lưu thay đổi':'Tạo đơn'}</button></div>
    </form>
   </section>
  </div>;
 }
 
-function OrderDetail({id,user,onClose,onEdit,onChanged}){
+export function OrderDetail({id,user,onClose,onEdit,onChanged}){
  const heading=useId();
  const [order,setOrder]=useState(null);
  const [error,setError]=useState('');
@@ -167,10 +162,10 @@ export function OrdersPage({user}){
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải đơn hàng</strong><p>{error}</p><button className="ct-btn secondary" onClick={reload}>Thử lại</button></div>
    :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2,3].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>{query||status?'Không có đơn phù hợp':'Chưa có đơn hàng'}</strong><p>{canWrite&&!query&&!status?'Bấm "Tạo đơn" để tạo đơn đầu tiên.':''}</p></div>
-   :<><div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th className="ct-sm-hide">Loại</th><th className="ct-sm-hide">Giao dự kiến</th><th className="ct-num">KL (kg)</th><th className="ct-num">Giá trị chưa VAT (đ)</th><th className="ct-num">Đã giao (kg)</th><th className="ct-sm-hide">Sales</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-    <tbody>{rows.map(o=><tr key={o.id}><td data-label="Mã đơn"><span className="ct-id">{o.code}</span></td><td data-label="Khách hàng">{o.customer_name}</td><td data-label="Loại" className="ct-sm-hide">{o.order_type==='OFFER'?'Offer':'Sẵn kho'}</td><td data-label="Giao dự kiến" className="ct-sm-hide">{day(o.expected_date)}</td>
-     <td data-label="KL (kg)" className="ct-num">{kg(o.total_kg)}</td><td data-label="Giá trị" className="ct-num">{vnd(o.total_amount)}</td><td data-label="Đã giao" className="ct-num">{o.delivered_kg?kg(o.delivered_kg):'—'}{o.pending_tickets?<span className="ct-pending-dot" title={o.pending_tickets+' phiếu chờ xác nhận'}> •{o.pending_tickets}</span>:''}</td><td data-label="Sales" className="ct-sm-hide">{o.sales_name||o.sales_email}</td><td data-label="Trạng thái"><Status value={STATUS[o.status]||o.status}/></td>
-     <td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setDetail(o.id)}>Xem</button></td></tr>)}</tbody></table></div>
+   :<><div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th className="ct-sm-hide">Loại</th><th className="ct-sm-hide">Giao dự kiến</th><th className="ct-num">KL (kg)</th><th className="ct-num">Giá trị chưa VAT (đ)</th><th className="ct-num">Đã giao (kg)</th><th className="ct-sm-hide">Sales</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>{rows.map(o=><tr key={o.id} className="ct-row-link" tabIndex={0} onClick={e=>{if(!e.target.closest('button'))setDetail(o.id)}} onKeyDown={e=>{if(e.key==='Enter'&&e.target===e.currentTarget)setDetail(o.id)}}><td data-label="Mã đơn" className="c-sub"><span className="ct-id">{o.code}</span></td><td data-label="Khách hàng" className="c-title">{o.customer_name}</td><td data-label="Loại" className="ct-sm-hide">{o.order_type==='OFFER'?'Offer':'Sẵn kho'}</td><td data-label="Giao dự kiến" className="ct-sm-hide">{day(o.expected_date)}</td>
+     <td data-label="KL (kg)" className="ct-num ct-sm-hide">{kg(o.total_kg)}</td><td data-label="Giá trị" className="ct-num c-value">{vnd(o.total_amount)}</td><td data-label="Đã giao" className="ct-num ct-sm-hide">{o.delivered_kg?kg(o.delivered_kg):'—'}{o.pending_tickets?<span className="ct-pending-dot" title={o.pending_tickets+' phiếu chờ xác nhận'}> •{o.pending_tickets}</span>:''}</td><td data-label="Sales" className="ct-sm-hide">{o.sales_name||o.sales_email}</td><td data-label="Trạng thái" className="c-badge"><Status value={STATUS[o.status]||o.status}/></td>
+     <td data-label="Thao tác" className="c-action"><button className="ct-text-button" onClick={()=>setDetail(o.id)}>Xem</button></td></tr>)}</tbody></table></div>
     <div className="ct-pagination"><span>Dòng {page*PAGE+1}–{page*PAGE+rows.length}{hasMore?', còn trang sau':''}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={17}/></button></div></div></>}
   {detail&&form===undefined&&<OrderDetail id={detail} user={user} onClose={()=>setDetail(null)} onEdit={o=>setForm(o)} onChanged={reload}/>}
   {form!==undefined&&<OrderForm initial={form} onCancel={()=>setForm(undefined)} onSaved={(d,edited)=>{setForm(undefined);setFlash((edited?'Đã cập nhật đơn ':'Đã tạo đơn ')+d.code+'.');if(!edited)setDetail(d.id);reload()}}/>}

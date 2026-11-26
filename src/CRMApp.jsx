@@ -8,6 +8,8 @@ import {Status,Notice,jsonFetch,toText} from './ui.jsx';
 import {OrdersPage} from './Orders.jsx';
 import {DeliveriesPage} from './Deliveries.jsx';
 import {PaymentsPage,ReportsPage} from './Finance.jsx';
+import {CustomerDetail} from './Customers.jsx';
+import {WorkDashboard} from './WorkDashboard.jsx';
 
 const LIVE=['customers','leads','products'];
 const LOCKED=[
@@ -38,6 +40,8 @@ const ROLE_SCOPE={
 };
 const ROLE_WRITE=new Set(['ADMIN','BOD','SALES_MANAGER','SALES_ADMIN']);
 const PAGE_SIZE=25;
+// Vai trò của từng cột khi hiển thị dạng danh sách gọn trên điện thoại.
+const COMPACT={id:'ct-sm-hide',name:'c-title',phone:'c-sub',contact:'c-sub',group:'c-sub',status:'c-badge',stage:'c-badge'};
 const LIST_HINT={customers:'Khách hàng bạn được xem theo vai trò. Bấm Sửa để cập nhật thông tin.',leads:'Khách đang tiếp cận, theo từng giai đoạn.',products:'Mặt hàng đang kinh doanh.'};
 // Mã chuẩn trong D1 -> nhãn hiển thị (khớp CUSTOMER_STATUS / LEAD_STAGE trong worker).
 const STATUS_LABEL={ACTIVE:'Đang giao dịch',PROSPECT:'Tiềm năng',INACTIVE:'Ngừng giao dịch'};
@@ -116,7 +120,7 @@ function Modal({entity,initial,onCancel,onSave}){
   </section>
  </div>;
 }
-function MasterList({entity,role,onSaved}){
+function MasterList({entity,role,user,onSaved}){
  const schema=SCHEMAS[entity];
  const [rows,setRows]=useState([]);
  const [page,setPage]=useState(0);
@@ -127,6 +131,8 @@ function MasterList({entity,role,onSaved}){
  const [error,setError]=useState('');
  const [flash,setFlash]=useState('');
  const [editing,setEditing]=useState(undefined);
+ const [viewing,setViewing]=useState(null);
+ const isCustomers=entity==='customers';
  const [sequence,setSequence]=useState(0);
  const canWrite=ROLE_WRITE.has(role)||(role==='SALES'&&entity!=='products');
  const reqId=useRef(0);
@@ -178,9 +184,13 @@ function MasterList({entity,role,onSaved}){
    :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2,3].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>{query?'Không tìm thấy kết quả':'Chưa có dữ liệu'}</strong><p>{query?'Hãy thử từ khóa khác.':'Có thể tạo bản ghi đầu tiên nếu tài khoản được cấp quyền.'}</p></div>
    :<>
-    <div className="ct-tablebox"><table className="ct-data-table"><thead><tr>{cols.map(([k,label])=><th scope="col" key={k} className={k==='id'?'ct-sm-hide':undefined}>{label}</th>)}{canWrite&&<th scope="col">Thao tác</th>}</tr></thead><tbody>{rows.map(row=><tr key={row.id}>{cols.map(([k,label])=><td key={k} data-label={label} className={k==='id'?'ct-sm-hide':undefined}>{cell(row,k)}</td>)}{canWrite&&<td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setEditing(row)}>Sửa</button></td>}</tr>)}</tbody></table></div>
+    <div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr>{cols.map(([k,label])=><th scope="col" key={k} className={COMPACT[k]==='ct-sm-hide'?'ct-sm-hide':undefined}>{label}</th>)}{(canWrite||isCustomers)&&<th scope="col">Thao tác</th>}</tr></thead>
+     <tbody>{rows.map(row=><tr key={row.id} className={isCustomers?'ct-row-link':undefined} tabIndex={isCustomers?0:undefined} onClick={isCustomers?e=>{if(!e.target.closest('button'))setViewing(row.id)}:undefined} onKeyDown={isCustomers?e=>{if(e.key==='Enter'&&e.target===e.currentTarget)setViewing(row.id)}:undefined}>
+      {cols.map(([k,label])=><td key={k} data-label={label} className={COMPACT[k]||'ct-sm-hide'}>{cell(row,k)}</td>)}
+      {(canWrite||isCustomers)&&<td data-label="Thao tác" className="c-action"><span className="ct-row-actions">{isCustomers&&<button className="ct-text-button" onClick={()=>setViewing(row.id)}>Xem</button>}{canWrite&&<button className="ct-text-button" onClick={()=>setEditing(row)}>Sửa</button>}</span></td>}</tr>)}</tbody></table></div>
     <div className="ct-pagination"><span>Dòng {page*PAGE_SIZE+1}–{page*PAGE_SIZE+rows.length}{hasMore?', còn trang sau':''}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)} aria-label="Trang trước"><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)} aria-label="Trang sau">Sau <ChevronRight size={17}/></button></div></div>
    </>}
+  {viewing&&<CustomerDetail id={viewing} user={user} statusLabel={v=>STATUS_LABEL[v]||v} onClose={()=>setViewing(null)} onChanged={onSaved} onEdit={canWrite?c=>{setViewing(null);setEditing(c)}:undefined}/>}
   {editing!==undefined&&<Modal entity={entity} initial={editing} onCancel={()=>setEditing(undefined)} onSave={save}/>}
  </section>;
 }
@@ -382,7 +392,7 @@ function CRMApp(){
   <div className="ct-main">
    <header className="ct-header"><div className="ct-header-left"><button className="ct-icon-button ct-menu-button" onClick={()=>setDrawer(true)} aria-label="Mở menu"><Menu size={22}/></button><div className="ct-breadcrumb"><small>CT FOOD / {current.name}</small><h1><Icon size={20}/>{current.name}</h1></div></div><div className="ct-header-right"><UserMenu user={auth.user} onNavigate={changePage}/></div></header>
    <main className="ct-content">
-    {selectedPage==='dashboard'?<Dashboard summary={summary} loading={stats.loading} error={stats.error} onRetry={loadSummary} onNavigate={changePage} updatedAt={updatedAt}/>
+    {selectedPage==='dashboard'?<WorkDashboard user={auth.user} summary={summary} onNavigate={changePage}/>
      :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
      :selectedPage==='orders'?<OrdersPage user={auth.user}/>
      :selectedPage==='deliveries'?<DeliveriesPage user={auth.user}/>
@@ -390,7 +400,7 @@ function CRMApp(){
      :selectedPage==='kpi'?<ReportsPage user={auth.user}/>
      :selectedPage==='profile'?<AccountProfile user={auth.user}/>
      :selectedPage==='password'?<AccountPassword/>
-     :LIVE.includes(selectedPage)?<MasterList key={selectedPage} entity={selectedPage} role={auth.user.role} onSaved={loadSummary}/>
+     :LIVE.includes(selectedPage)?<MasterList key={selectedPage} entity={selectedPage} role={auth.user.role} user={auth.user} onSaved={loadSummary}/>
      :<Pending page={selectedPage}/>}
     <footer className="ct-footer">CT FOOD CRM, phiên bản 0.4</footer>
    </main>

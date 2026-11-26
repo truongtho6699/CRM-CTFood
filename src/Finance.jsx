@@ -1,7 +1,7 @@
 // FIN-01 — Thu tiền & công nợ (thử nghiệm). KPI-01 — Báo cáo & KPI (thử nghiệm).
 import React,{useEffect,useId,useState} from 'react';
 import {Plus,RefreshCcw,Search,X,Trash2,AlertTriangle,Database,ChevronLeft,ChevronRight,Ban,Pencil,Download} from 'lucide-react';
-import {Status,Notice,jsonFetch,TrialNote} from './ui.jsx';
+import {Status,Notice,jsonFetch,TrialNote,Combobox,searchCustomers} from './ui.jsx';
 
 const TYPE={DEPOSIT:'Đặt cọc',PAYMENT:'Thanh toán'};
 const METHOD={BANK:'Chuyển khoản',CASH:'Tiền mặt'};
@@ -37,20 +37,21 @@ async function customerOrders(customerId){
  return o.data.filter(x=>x.customer_id===customerId&&x.status!=='CANCELLED').map(x=>({id:x.id,code:x.code,status:x.status,balance:bal.get(x.id)??0}));
 }
 
-function PaymentForm({onCancel,onSaved}){
+export function PaymentForm({presetCustomer,onCancel,onSaved}){
  const heading=useId();
- const [customers,setCustomers]=useState([]);
+ const [customerName,setCustomerName]=useState(presetCustomer?.name||'');
  const [orders,setOrders]=useState([]);
- const [f,setF]=useState({customer_id:'',payment_type:'PAYMENT',method:'BANK',amount:'',payment_date:today(),reference:'',note:''});
+ const [f,setF]=useState({customer_id:presetCustomer?.id||'',payment_type:'PAYMENT',method:'BANK',amount:'',payment_date:today(),reference:'',note:''});
  const [rows,setRows]=useState([]);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  useEsc(onCancel,busy);
- useEffect(()=>{jsonFetch('/api/customers?limit=100').then(r=>setCustomers(r.data)).catch(e=>setError(e.message))},[]);
  useEffect(()=>{setRows([]);setOrders([]);if(f.customer_id)customerOrders(f.customer_id).then(setOrders).catch(e=>setError(e.message))},[f.customer_id]);
  const set=(k,v)=>setF(o=>({...o,[k]:v}));
  const submit=async e=>{
-  e.preventDefault();setBusy(true);setError('');
+  e.preventDefault();
+  if(!f.customer_id){setError('Chưa chọn khách hàng. Gõ tên hoặc số điện thoại rồi chọn trong danh sách.');return}
+  setBusy(true);setError('');
   try{const r=await jsonFetch('/api/payments',{method:'POST',body:JSON.stringify({...f,amount:Number(f.amount),allocations:rows.map(x=>({order_id:x.order_id,amount:Number(x.amount)}))})});onSaved(r.data)}
   catch(ex){setError(ex.message);setBusy(false)}
  };
@@ -59,7 +60,7 @@ function PaymentForm({onCancel,onSaved}){
    <div className="ct-modal-title"><div><h2 id={heading}>Lập phiếu thu</h2></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onCancel} aria-label="Đóng biểu mẫu"><X size={20}/></button></div>
    <form onSubmit={submit}>
     <div className="formgrid ct-formgrid">
-     <label>Khách hàng<span className="ct-required"> *</span><select required disabled={busy} value={f.customer_id} onChange={e=>set('customer_id',e.target.value)}><option value="">Chọn khách hàng...</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+     <div className="ct-field-label">Khách hàng<span className="ct-required"> *</span>{presetCustomer?<div className="ct-readonly">{customerName}</div>:<Combobox value={f.customer_id} label={customerName} disabled={busy} ariaLabel="Khách hàng" placeholder="Gõ tên hoặc số điện thoại..." search={searchCustomers} onChange={(id,it)=>{set('customer_id',id);setCustomerName(it?.label||'')}}/>}</div>
      <label>Loại thu<span className="ct-required"> *</span><select disabled={busy} value={f.payment_type} onChange={e=>set('payment_type',e.target.value)}>{Object.entries(TYPE).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
      <label>Số tiền (đ)<span className="ct-required"> *</span><input type="number" required min="1" step="1" disabled={busy} value={f.amount} onChange={e=>set('amount',e.target.value)}/></label>
      <label>Ngày thu<span className="ct-required"> *</span><input type="date" required disabled={busy} value={f.payment_date} onChange={e=>set('payment_date',e.target.value)}/></label>
@@ -151,13 +152,13 @@ export function PaymentsPage({user}){
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải dữ liệu</strong><p>{error}</p><button className="ct-btn secondary" onClick={reload}>Thử lại</button></div>
    :loading||(tab==='receivables'&&!recv?.data)?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :tab==='receivables'?(recv.data.length===0?<div className="ct-empty"><Database size={32}/><strong>Không có công nợ phù hợp</strong></div>
-    :<div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th className="ct-sm-hide">Sales</th><th className="ct-num ct-sm-hide">Giá trị đã giao (đ)</th><th className="ct-num ct-sm-hide">Đã thu (đ)</th><th className="ct-num">Còn lại (đ)</th><th>Hạn thanh toán</th><th>Tình trạng</th></tr></thead>
-     <tbody>{recv.data.map(r=><tr key={r.order_id}><td data-label="Mã đơn"><span className="ct-id">{r.code}</span></td><td data-label="Khách hàng">{r.customer_name}</td><td data-label="Sales" className="ct-sm-hide">{r.sales_name||r.sales_email}</td><td data-label="Đã giao" className="ct-num ct-sm-hide">{vnd(r.delivered_value)}</td><td data-label="Đã thu" className="ct-num ct-sm-hide">{vnd(r.paid)}</td>
-      <td data-label="Còn lại" className={'ct-num '+(r.balance<0?'ct-pos':'')}><strong>{vnd(r.balance)}</strong></td><td data-label="Hạn TT">{day(r.due_date)}</td>
-      <td data-label="Tình trạng">{r.balance<=0?<Status value={r.balance<0?'Trả trước':'Đã thu đủ'}/>:r.overdue_days>0?<Status value={'Quá hạn '+r.overdue_days+' ngày'}/>:<Status value="Trong hạn"/>}</td></tr>)}</tbody></table></div>)
+    :<div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th className="ct-sm-hide">Sales</th><th className="ct-num ct-sm-hide">Giá trị đã giao (đ)</th><th className="ct-num ct-sm-hide">Đã thu (đ)</th><th className="ct-num">Còn lại (đ)</th><th>Hạn thanh toán</th><th>Tình trạng</th></tr></thead>
+     <tbody>{recv.data.map(r=><tr key={r.order_id}><td data-label="Mã đơn" className="c-sub"><span className="ct-id">{r.code}</span>{r.due_date?', hạn '+day(r.due_date):''}</td><td data-label="Khách hàng" className="c-title">{r.customer_name}</td><td data-label="Sales" className="ct-sm-hide">{r.sales_name||r.sales_email}</td><td data-label="Đã giao" className="ct-num ct-sm-hide">{vnd(r.delivered_value)}</td><td data-label="Đã thu" className="ct-num ct-sm-hide">{vnd(r.paid)}</td>
+      <td data-label="Còn lại" className={'ct-num c-value '+(r.balance<0?'ct-pos':'')}><strong>{vnd(r.balance)}</strong></td><td data-label="Hạn TT" className="ct-sm-hide">{day(r.due_date)}</td>
+      <td data-label="Tình trạng" className="c-badge">{r.balance<=0?<Status value={r.balance<0?'Trả trước':'Đã thu đủ'}/>:r.overdue_days>0?<Status value={'Quá hạn '+r.overdue_days+' ngày'}/>:<Status value="Trong hạn"/>}</td></tr>)}</tbody></table></div>)
    :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>Chưa có phiếu thu</strong><p>{canWrite?'Bấm "Lập phiếu thu" khi nhận cọc hoặc thanh toán.':''}</p></div>
-   :<><div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Ngày thu</th><th>Khách hàng</th><th>Loại</th><th className="ct-sm-hide">Hình thức</th><th className="ct-num">Số tiền (đ)</th><th className="ct-num ct-sm-hide">Đã phân bổ (đ)</th><th className="ct-sm-hide">Chứng từ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-    <tbody>{rows.map(p=><tr key={p.id}><td data-label="Ngày thu">{day(p.payment_date)}</td><td data-label="Khách hàng">{p.customer_name}</td><td data-label="Loại">{TYPE[p.payment_type]}</td><td data-label="Hình thức" className="ct-sm-hide">{METHOD[p.method]||p.method}</td><td data-label="Số tiền" className="ct-num">{vnd(p.amount)}</td><td data-label="Đã phân bổ" className="ct-num ct-sm-hide">{vnd(p.allocated)}</td><td data-label="Chứng từ" className="ct-sm-hide">{p.reference||'—'}</td><td data-label="Trạng thái"><Status value={p.status==='VOID'?'Đã hủy':'Hiệu lực'}/></td><td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setDetail(p.id)}>Xem</button></td></tr>)}</tbody></table></div>
+   :<><div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr><th>Ngày thu</th><th>Khách hàng</th><th>Loại</th><th className="ct-sm-hide">Hình thức</th><th className="ct-num">Số tiền (đ)</th><th className="ct-num ct-sm-hide">Đã phân bổ (đ)</th><th className="ct-sm-hide">Chứng từ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>{rows.map(p=><tr key={p.id} className="ct-row-link" tabIndex={0} onClick={e=>{if(!e.target.closest('button'))setDetail(p.id)}} onKeyDown={e=>{if(e.key==='Enter'&&e.target===e.currentTarget)setDetail(p.id)}}><td data-label="Ngày thu" className="c-sub">{day(p.payment_date)}, {TYPE[p.payment_type]}</td><td data-label="Khách hàng" className="c-title">{p.customer_name}</td><td data-label="Loại" className="ct-sm-hide">{TYPE[p.payment_type]}</td><td data-label="Hình thức" className="ct-sm-hide">{METHOD[p.method]||p.method}</td><td data-label="Số tiền" className="ct-num c-value">{vnd(p.amount)}</td><td data-label="Đã phân bổ" className="ct-num ct-sm-hide">{vnd(p.allocated)}</td><td data-label="Chứng từ" className="ct-sm-hide">{p.reference||'—'}</td><td data-label="Trạng thái" className="c-badge"><Status value={p.status==='VOID'?'Đã hủy':'Hiệu lực'}/></td><td data-label="Thao tác" className="c-action"><button className="ct-text-button" onClick={()=>setDetail(p.id)}>Xem</button></td></tr>)}</tbody></table></div>
     <div className="ct-pagination"><span>Dòng {page*PAGE+1}–{page*PAGE+rows.length}{hasMore?', còn trang sau':''}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={17}/></button></div></div></>}
   {form&&<PaymentForm onCancel={()=>setForm(false)} onSaved={d=>{setForm(false);setFlash('Đã lập phiếu thu.');setTab('payments');setDetail(d.id);refreshTotals();reload()}}/>}
   {detail&&<PaymentDetail id={detail} user={user} onClose={()=>setDetail(null)} onChanged={()=>{refreshTotals();reload()}}/>}

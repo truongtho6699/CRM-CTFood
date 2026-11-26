@@ -3,6 +3,7 @@ import {response,bad,trimText,readJson,fail} from './http.js';
 import {handleOrders} from './orders.js';
 import {handleDeliveries} from './deliveries.js';
 import {handleFinance} from './finance.js';
+import {handleWorkspace} from './workspace.js';
 
 function assertConfig(env){if(!env.DB||!env.CF_ACCESS_TEAM_DOMAIN||!env.CF_ACCESS_AUD)throw new Error('API chưa được cấu hình D1 / Cloudflare Access')}
 // Cache JWKS per issuer across requests in the same isolate (jose handles key rotation/cooldown).
@@ -239,6 +240,8 @@ export function createWorker({getKeys=remoteKeys}={}){return{
     return response({ok:true,data:{customers:counts[0]?.results?.[0]?.n??0,leads:canLeads?(counts[1]?.results?.[0]?.n??0):null,products:counts[2]?.results?.[0]?.n??0},source:'D1'});
    }
 
+   const workspace=await handleWorkspace(env,user,request,url);
+   if(workspace)return workspace;
    const orders=await handleOrders(env,user,request,url);
    if(orders)return orders;
    const deliveries=await handleDeliveries(env,user,request,url);
