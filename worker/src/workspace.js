@@ -68,7 +68,7 @@ async function worklist(env,user){
 
 // ---------- Chi tiết khách hàng ----------
 async function customerOverview(env,user,id){
- const cols='id,name,tax_code,phone,email,address,region,owner_email,status,created_at,updated_at'+(CREDIT_COLUMNS.includes(user.role)?',credit_limit,credit_days':'');
+ const cols='id,name,tax_code,phone,email,address,region,owner_email,status,created_at,updated_at,legacy_code,partner_type,contact_name,contact_phone,source_sales_name'+(CREDIT_COLUMNS.includes(user.role)?',credit_limit,credit_days':'');
  const c=await env.DB.prepare(`SELECT ${cols},(SELECT full_name FROM app_users WHERE email=customers.owner_email) AS owner_name FROM customers WHERE id=?`).bind(id).first();
  if(!c||(isSales(user)&&c.owner_email!==user.email))return bad('Không tìm thấy khách hàng',404);
  const {results:orders}=await env.DB.prepare(`SELECT o.id,o.code,o.status,o.order_type,o.expected_date,o.created_at,
