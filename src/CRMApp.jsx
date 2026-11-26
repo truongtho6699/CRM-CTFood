@@ -42,7 +42,7 @@ const ROLE_SCOPE={
 const ROLE_WRITE=new Set(['ADMIN','BOD','SALES_MANAGER','SALES_ADMIN']);
 const PAGE_SIZE=25;
 // Vai trò của từng cột khi hiển thị dạng danh sách gọn trên điện thoại.
-const COMPACT={id:'ct-sm-hide',name:'c-title',phone:'c-sub',contact:'c-sub',group:'c-sub',status:'c-badge',stage:'c-badge'};
+const COMPACT={id:'ct-sm-hide',name:'c-title',phone:'c-sub',contact:'c-sub',group:'c-sub',legacy_code:'c-sub',partner_type:'c-badge',contact_name:'c-sub',contact_phone:'c-sub',source_sales_name:'c-sub',packaging_type:'c-sub',conversion_kg:'c-sub',status:'c-badge',stage:'c-badge'};
 const LIST_HINT={customers:'Khách hàng bạn được xem theo vai trò. Bấm Sửa để cập nhật thông tin.',leads:'Khách đang tiếp cận, theo từng giai đoạn.',products:'Mặt hàng đang kinh doanh.'};
 // Mã chuẩn trong D1 -> nhãn hiển thị (khớp CUSTOMER_STATUS / LEAD_STAGE trong worker).
 const STATUS_LABEL={ACTIVE:'Đang giao dịch',PROSPECT:'Tiềm năng',INACTIVE:'Ngừng giao dịch'};
