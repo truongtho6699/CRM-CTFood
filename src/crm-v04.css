@@ -108,3 +108,5 @@ a.ct-btn{text-decoration:none}
 .ct-task ul{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid #edf1f3}.ct-task li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #f1f4f5;font-size:13px}.ct-task li span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ct-task li span:last-child{color:#4f6a75;white-space:nowrap;font-variant-numeric:tabular-nums}
 .ct-quick-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}.ct-quick-links button{border:1px solid #dbe5e9;background:#fff;border-radius:20px;padding:8px 14px;font:inherit;font-size:13px;color:#2c4a55;cursor:pointer}.ct-quick-links button:hover{background:#f0f8f7}
 @media(max-width:760px){.ct-task-grid{grid-template-columns:1fr}.ct-task-count strong{font-size:24px}}
+.ct-task{min-width:0;overflow:hidden}.ct-task header{flex-wrap:wrap}.ct-task li span:last-child{flex-shrink:0;max-width:55%;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:760px){.ct-task-grid{grid-template-columns:minmax(0,1fr)}.ct-dashboard-title{flex-wrap:wrap}}
