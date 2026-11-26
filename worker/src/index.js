@@ -112,15 +112,21 @@ function validated(entity,payload){
  if(entity==='leads')return {name,contact:trimText(payload.contact,100),stage:toCode(LEAD_STAGE,payload.stage,'NEW','Giai đoạn khách tiềm năng')};
  throw Object.assign(new Error('Phân hệ chưa hỗ trợ lưu D1'),{status:405});
 }
+// Kiểm tra chung cho mọi yêu cầu ghi: cùng Origin, JSON, kích thước giới hạn.
+async function readJson(request){
+ const origin=request.headers.get('Origin');
+ if(!origin||origin!==new URL(request.url).origin)throw Object.assign(new Error('Nguồn yêu cầu không hợp lệ'),{status:403});
+ if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type')||''))throw Object.assign(new Error('Yêu cầu Content-Type: application/json'),{status:415});
+ const raw=await request.text();
+ if(raw.length>15000)throw Object.assign(new Error('Dữ liệu quá lớn'),{status:413});
+ let payload;try{payload=JSON.parse(raw)}catch{throw Object.assign(new Error('JSON không hợp lệ'),{status:400})}
+ if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Object.assign(new Error('Dữ liệu không hợp lệ'),{status:400});
+ return payload;
+}
 async function saveEntity(env,user,entity,request,method,id){
  if(!writable.has(entity))return bad('Chức năng lưu D1 của phân hệ này chưa nghiệm thu',405);
  if(!['ADMIN','BOD','SALES_MANAGER','SALES_ADMIN'].includes(user.role) && !(user.role==='SALES' && entity!=='products'))return bad('Không được phép cập nhật',403);
- const origin=request.headers.get('Origin');
- if(!origin||origin!==new URL(request.url).origin)return bad('Nguồn yêu cầu không hợp lệ',403);
- if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type')||''))return bad('Yêu cầu Content-Type: application/json',415);
- const raw=await request.text();
- if(raw.length>15000)return bad('Dữ liệu quá lớn',413);
- let payload;try{payload=JSON.parse(raw)}catch{return bad('JSON không hợp lệ',400)}
+ const payload=await readJson(request);
  const v=validated(entity,payload);
  const entityId=method==='POST'?crypto.randomUUID():id;
  if(!entityId||entityId.length>100)return bad('Mã bản ghi không hợp lệ',400);
@@ -165,6 +171,62 @@ async function saveEntity(env,user,entity,request,method,id){
   return bad('Không lưu được dữ liệu. Vui lòng thử lại hoặc báo quản trị viên.',500);
  }
 }
+// ---------- ADM-01: Quản lý người dùng (chỉ ADMIN) ----------
+export const ROLES={ADMIN:'Quản trị hệ thống',BOD:'Ban Giám đốc',ACCOUNTING:'Kế toán',SALES_MANAGER:'Trưởng phòng kinh doanh',SALES:'Nhân viên kinh doanh',SALES_ADMIN:'Sale Admin',LOGISTICS:'Kho / Logistics'};
+const EMAIL_RE=/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+const CONFLICT='Tài khoản vừa được quản trị viên khác cập nhật. Vui lòng tải lại để xem dữ liệu mới trước khi sửa.';
+function requireAdmin(user){if(user.role!=='ADMIN')throw Object.assign(new Error('Chỉ quản trị hệ thống được quản lý người dùng'),{status:403})}
+async function listUsers(env,user){
+ requireAdmin(user);
+ const {results}=await env.DB.prepare('SELECT email,full_name,role,active,created_at,updated_at FROM app_users ORDER BY active DESC,role,email').all();
+ return response({ok:true,data:results||[]});
+}
+function validatedUser(payload){
+ const full_name=trimText(payload.full_name,120);
+ if(!full_name)throw Object.assign(new Error('Họ tên không được trống'),{status:400});
+ const role=trimText(payload.role,30).toUpperCase();
+ if(!Object.hasOwn(ROLES,role))throw Object.assign(new Error('Vai trò không hợp lệ'),{status:400});
+ const a=payload.active;
+ if(![true,false,1,0].includes(a))throw Object.assign(new Error('Trạng thái hoạt động không hợp lệ'),{status:400});
+ return {full_name,role,active:a===true||a===1?1:0};
+}
+async function saveUser(env,user,request,method,emailParam){
+ requireAdmin(user);
+ const payload=await readJson(request);
+ const v=validatedUser(payload);
+ const now=new Date().toISOString();
+ let email,old=null,stmt;
+ if(method==='POST'){
+  email=trimText(payload.email,254).toLowerCase();
+  if(!EMAIL_RE.test(email))return bad('Email không hợp lệ',400);
+  stmt=env.DB.prepare('INSERT INTO app_users(email,full_name,role,active,updated_at) VALUES(?,?,?,?,?)').bind(email,v.full_name,v.role,v.active,now);
+ }else{
+  try{email=decodeURIComponent(emailParam||'').toLowerCase()}catch{return bad('Email không hợp lệ',400)}
+  const expected=typeof payload.expected_updated_at==='string'?payload.expected_updated_at:null;
+  if(!expected)return bad('Thiếu phiên bản bản ghi (expected_updated_at). Vui lòng tải lại trang rồi sửa lại.',428);
+  old=await env.DB.prepare('SELECT email,full_name,role,active,updated_at FROM app_users WHERE email=?').bind(email).first();
+  if(!old)return bad('Không tìm thấy tài khoản',404);
+  if(old.updated_at!==expected)return bad(CONFLICT,409);
+  const losesAdmin=old.role==='ADMIN'&&old.active&&(v.role!=='ADMIN'||!v.active);
+  if(email===user.email&&losesAdmin)return bad('Không thể tự hạ quyền hoặc tự khóa tài khoản quản trị đang đăng nhập',400);
+  if(losesAdmin){
+   const left=await env.DB.prepare("SELECT COUNT(*) AS n FROM app_users WHERE role='ADMIN' AND active=1 AND email<>?").bind(email).first();
+   if(!(left?.n>0))return bad('Hệ thống phải còn ít nhất một quản trị viên đang hoạt động',400);
+  }
+  stmt=env.DB.prepare('UPDATE app_users SET full_name=?,role=?,active=?,updated_at=? WHERE email=? AND updated_at=?').bind(v.full_name,v.role,v.active,now,email,expected);
+ }
+ const audit=env.DB.prepare('INSERT INTO audit_log(id,actor_email,action,entity,entity_id,before_json,after_json) SELECT ?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM app_users WHERE email=? AND updated_at=?)').bind(crypto.randomUUID(),user.email,method==='POST'?'CREATE':'UPDATE','app_users',email,old?JSON.stringify(old):null,JSON.stringify({email,...v}),email,now);
+ try{
+  const results=await env.DB.batch([stmt,audit]);
+  if(method==='PATCH'&&!(results?.[0]?.meta?.changes>0))return bad(CONFLICT,409);
+  return response({ok:true,data:{email,...v,updated_at:now},persisted:true},method==='POST'?201:200);
+ }catch(e){
+  if(/UNIQUE|PRIMARY KEY/i.test(String(e?.message||'')))return bad('Email này đã có trong hệ thống',409);
+  console.error('D1 user save failed',e?.name);
+  return bad('Không lưu được tài khoản. Vui lòng thử lại.',500);
+ }
+}
+
 // createWorker cho phép kiểm thử truyền bộ khóa cục bộ; bản triển khai luôn dùng JWKS thật của Cloudflare Access.
 export function createWorker({getKeys=remoteKeys}={}){return{
  async fetch(request,env){
@@ -188,6 +250,12 @@ export function createWorker({getKeys=remoteKeys}={}){return{
     return response({ok:true,data:{customers:counts[0]?.results?.[0]?.n??0,leads:canLeads?(counts[1]?.results?.[0]?.n??0):null,products:counts[2]?.results?.[0]?.n??0},source:'D1'});
    }
 
+   const um=url.pathname.match(/^\/api\/users(?:\/([^/]+))?$/);
+   if(um){
+    if(request.method==='GET'&&!um[1])return await listUsers(env,user);
+    if((request.method==='POST'&&!um[1])||(request.method==='PATCH'&&um[1]))return await saveUser(env,user,request,request.method,um[1]);
+    return bad('Phương thức không hỗ trợ',405);
+   }
    const match=url.pathname.match(/^\/api\/([a-z_]+)(?:\/([a-zA-Z0-9_-]+))?$/);
    if(!match)return bad('Không tìm thấy API',404);
    const entity=match[1],id=match[2];

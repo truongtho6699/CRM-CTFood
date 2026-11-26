@@ -1,6 +1,6 @@
 import React,{useEffect,useId,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {LayoutDashboard,Users,UserPlus,Package,ShoppingCart,Truck,Wallet,ChartColumn,Settings,Search,Plus,Download,RefreshCcw,Menu,X,AlertTriangle,Lock,Database,CheckCircle2,ChevronLeft,ChevronRight,LogOut,ArrowRight,Clock3,ShieldCheck,Info} from 'lucide-react';
+import {LayoutDashboard,Users,UserPlus,Package,ShoppingCart,Truck,Wallet,ChartColumn,Settings,Search,Plus,Download,RefreshCcw,Menu,X,AlertTriangle,Lock,Database,CheckCircle2,ChevronLeft,ChevronRight,LogOut,ArrowRight,Clock3,ShieldCheck,Info,UserCog} from 'lucide-react';
 import './crm-v04.css';
 import {LoginPanel} from './AuthGateway.jsx';
 import {SCHEMAS} from './data.js';
@@ -18,6 +18,9 @@ const NAV=[
  {id:'leads',name:'Khách tiềm năng',icon:UserPlus},
  {id:'products',name:'Sản phẩm',icon:Package},
 ];
+// Khớp ROLES trong worker/src/index.js.
+const ROLE_LABEL={ADMIN:'Quản trị hệ thống',BOD:'Ban Giám đốc',ACCOUNTING:'Kế toán',SALES_MANAGER:'Trưởng phòng kinh doanh',SALES:'Nhân viên kinh doanh',SALES_ADMIN:'Sale Admin',LOGISTICS:'Kho / Logistics'};
+const ADMIN_NAV={id:'users',name:'Người dùng & phân quyền',icon:UserCog};
 const ROLE_WRITE=new Set(['ADMIN','BOD','SALES_MANAGER','SALES_ADMIN']);
 const PAGE_SIZE=25;
 // Mã chuẩn trong D1 -> nhãn hiển thị (khớp CUSTOMER_STATUS / LEAD_STAGE trong worker).
@@ -25,7 +28,7 @@ const STATUS_LABEL={ACTIVE:'Đang giao dịch',PROSPECT:'Tiềm năng',INACTIVE:
 const STAGE_LABEL={NEW:'Mới',CONTACTING:'Đang liên hệ',QUOTED:'Đã báo giá',CONVERTED:'Chuyển đổi',REJECTED:'Không phù hợp'};
 const getRoute=()=>{
  const page=(window.location.hash||'#/dashboard').replace(/^#\/?/,'').split('?')[0];
- return [...NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
+ return [...NAV,ADMIN_NAV,...LOCKED].some(x=>x.id===page)?page:'dashboard';
 };
 const toText=x=>String(x??'');
 function safeCSV(data,label){
@@ -44,7 +47,7 @@ function safeCSV(data,label){
 }
 function Status({value}){
  const v=toText(value)||'Chưa xác định';
- const kind=/ngừng|INACTIVE|không phù hợp|hủy/i.test(v)?'bad':/đang giao dịch|ACTIVE|chuyển đổi|hoàn/i.test(v)?'good':'neutral';
+ const kind=/ngừng|INACTIVE|không phù hợp|hủy|đã khóa/i.test(v)?'bad':/đang giao dịch|ACTIVE|chuyển đổi|hoàn|đang hoạt động/i.test(v)?'good':'neutral';
  return <span className={'ct-tag '+kind}><span className="ct-tag-dot"/>{v}</span>;
 }
 function Notice({type='info',children}){
@@ -173,6 +176,82 @@ function MasterList({entity,role,onSaved}){
   {editing!==undefined&&<Modal entity={entity} initial={editing} onCancel={()=>setEditing(undefined)} onSave={save}/>}
  </section>;
 }
+async function jsonFetch(path,options={}){
+ const res=await fetch(path,{credentials:'same-origin',...options,headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});
+ const data=await res.json().catch(()=>({}));
+ if(!res.ok||!data.ok)throw Object.assign(Error(data.error||'Lỗi máy chủ (HTTP '+res.status+')'),{status:res.status});
+ return data;
+}
+function UserModal({initial,self,onCancel,onSave}){
+ const editing=Boolean(initial);
+ const [form,setForm]=useState(initial?{email:initial.email,full_name:initial.full_name,role:initial.role,active:Boolean(initial.active)}:{email:'',full_name:'',role:'SALES',active:true});
+ const [busy,setBusy]=useState(false);
+ const [error,setError]=useState('');
+ const heading=useId();
+ const isSelf=editing&&initial.email===self;
+ const set=(k,v)=>setForm(old=>({...old,[k]:v}));
+ useEffect(()=>{const onKey=e=>{if(e.key==='Escape'&&!busy)onCancel()};document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey)},[busy,onCancel]);
+ const submit=async e=>{
+  e.preventDefault();if(busy)return;setBusy(true);setError('');
+  try{await onSave(form,initial)}catch(ex){setError(ex.message);setBusy(false)}
+ };
+ return <div className="backdrop ct-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onCancel()}}>
+  <section className="modal ct-modal" role="dialog" aria-modal="true" aria-labelledby={heading}>
+   <div className="ct-modal-title"><div><div className="ct-overline">PHÂN QUYỀN · CLOUDFLARE D1</div><h2 id={heading}>{editing?'Cập nhật tài khoản':'Thêm tài khoản'}</h2></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onCancel} aria-label="Đóng biểu mẫu"><X size={20}/></button></div>
+   <form onSubmit={submit}>
+    <div className="formgrid ct-formgrid">
+     <label>Email Google<span className="ct-required"> *</span><input type="email" required disabled={busy||editing} value={form.email} maxLength={254} autoComplete="off" onChange={e=>set('email',e.target.value)} placeholder="ten@congty.com"/></label>
+     <label>Họ tên<span className="ct-required"> *</span><input required disabled={busy} value={form.full_name} maxLength={120} onChange={e=>set('full_name',e.target.value)}/></label>
+     <label>Vai trò<span className="ct-required"> *</span><select required disabled={busy||isSelf} value={form.role} onChange={e=>set('role',e.target.value)}>{Object.entries(ROLE_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
+     <label>Trạng thái<select disabled={busy||isSelf} value={form.active?'1':'0'} onChange={e=>set('active',e.target.value==='1')}><option value="1">Đang hoạt động</option><option value="0">Đã khóa</option></select></label>
+    </div>
+    {isSelf&&<p className="ct-owner-help"><Lock size={15}/> Không thể tự đổi vai trò hoặc tự khóa tài khoản đang đăng nhập.</p>}
+    {!editing&&<p className="ct-owner-help"><Info size={15}/> Sau khi lưu, cần thêm email này vào chính sách Cloudflare Access của CRM thì người dùng mới đăng nhập được.</p>}
+    {error&&<Notice type="error">{error}</Notice>}
+    <div className="ct-modal-actions"><button type="button" disabled={busy} className="ct-btn secondary" onClick={onCancel}>Hủy</button><button type="submit" disabled={busy} className="ct-btn primary">{busy?'Đang lưu...':'Lưu tài khoản'}</button></div>
+   </form>
+  </section>
+ </div>;
+}
+function UsersAdmin({self}){
+ const [rows,setRows]=useState([]);
+ const [loading,setLoading]=useState(true);
+ const [error,setError]=useState('');
+ const [flash,setFlash]=useState('');
+ const [editing,setEditing]=useState(undefined);
+ const [query,setQuery]=useState('');
+ const load=async()=>{
+  setLoading(true);setError('');
+  try{setRows((await jsonFetch('/api/users')).data)}catch(e){setRows([]);setError(e.message)}
+  finally{setLoading(false)}
+ };
+ useEffect(()=>{load()},[]);
+ const save=async(form,old)=>{
+  const body={full_name:form.full_name,role:form.role,active:form.active};
+  try{
+   if(old)await jsonFetch('/api/users/'+encodeURIComponent(old.email),{method:'PATCH',body:JSON.stringify({...body,expected_updated_at:old.updated_at})});
+   else await jsonFetch('/api/users',{method:'POST',body:JSON.stringify({...body,email:form.email})});
+  }catch(e){if(e.status===409&&old)load();throw e}
+  setEditing(undefined);setFlash(old?'Đã cập nhật tài khoản.':'Đã thêm tài khoản. Nhớ thêm email vào chính sách Cloudflare Access.');load();
+ };
+ const q=query.trim().toLowerCase();
+ const shown=q?rows.filter(r=>(r.email+' '+r.full_name+' '+(ROLE_LABEL[r.role]||r.role)).toLowerCase().includes(q)):rows;
+ const fmt=v=>{if(!v)return '—';const d=new Date(v.includes('T')?v:v.replace(' ','T')+'Z');return isNaN(d)?v:new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(d)};
+ return <section className="ct-workspace">
+  <div className="ct-section-head"><div><div className="ct-overline">HỆ THỐNG · CHỈ QUẢN TRỊ</div><h2>Người dùng & phân quyền</h2><p>Tài khoản được phép dùng CRM và vai trò quyết định dữ liệu mỗi người được xem/sửa.</p></div>
+   <div className="ct-actions"><button className="ct-btn secondary" disabled={loading} onClick={load}><RefreshCcw size={17}/> Làm mới</button><button className="ct-btn primary" onClick={()=>setEditing(null)}><Plus size={17}/> Thêm tài khoản</button></div>
+  </div>
+  <Notice>Đăng nhập cần đủ 2 lớp: email nằm trong chính sách <strong>Cloudflare Access</strong> và tài khoản <strong>đang hoạt động</strong> ở đây. Khóa tài khoản tại đây có hiệu lực ngay với mọi API.</Notice>
+  {flash&&<Notice type="success">{flash}</Notice>}
+  <div className="ct-toolbar"><label className="ct-search"><Search size={18}/><span className="sr-only">Tìm người dùng</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm theo email, họ tên hoặc vai trò..." aria-label="Tìm người dùng"/></label><span className="ct-toolbar-counter">{rows.filter(r=>r.active).length} đang hoạt động · {rows.length} tài khoản</span></div>
+  {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải danh sách</strong><p>{error}</p><button className="ct-btn secondary" onClick={load}>Thử lại</button></div>
+   :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
+   :shown.length===0?<div className="ct-empty"><Database size={32}/><strong>Không tìm thấy tài khoản</strong></div>
+   :<div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th scope="col">Email</th><th scope="col">Họ tên</th><th scope="col">Vai trò</th><th scope="col">Trạng thái</th><th scope="col">Cập nhật</th><th scope="col">Thao tác</th></tr></thead>
+    <tbody>{shown.map(r=><tr key={r.email}><td data-label="Email">{r.email}{r.email===self&&<span className="ct-you"> (bạn)</span>}</td><td data-label="Họ tên">{r.full_name}</td><td data-label="Vai trò">{ROLE_LABEL[r.role]||r.role}</td><td data-label="Trạng thái"><Status value={r.active?'Đang hoạt động':'Đã khóa'}/></td><td data-label="Cập nhật">{fmt(r.updated_at)}</td><td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setEditing(r)}>Chỉnh sửa</button></td></tr>)}</tbody></table></div>}
+  {editing!==undefined&&<UserModal initial={editing} self={self} onCancel={()=>setEditing(undefined)} onSave={save}/>}
+ </section>;
+}
 function Dashboard({summary,loading,error,onRetry,onNavigate,updatedAt}){
  const cards=[
   {name:'Khách hàng',value:summary?.customers,icon:Users,to:'customers',detail:'Bản ghi khách hàng từ D1'},
@@ -228,9 +307,10 @@ function CRMApp(){
  },[]);
  useEffect(()=>{if(auth.status==='online')loadSummary()},[auth.status]);
  if(auth.status!=='online')return <LoginPanel error={auth.error} loading={auth.status==='loading'} onRetry={authenticate}/>;
- const permittedNav=NAV.filter(item=>item.id!=='leads'||auth.user.role!=='LOGISTICS');
- const current=[...permittedNav,...LOCKED].find(x=>x.id===route)||permittedNav[0];
- const selectedPage=route==='leads'&&auth.user.role==='LOGISTICS'?'dashboard':route;
+ const isAdmin=auth.user.role==='ADMIN';
+ const permittedNav=[...NAV.filter(item=>item.id!=='leads'||auth.user.role!=='LOGISTICS'),...(isAdmin?[ADMIN_NAV]:[])];
+ const selectedPage=(route==='leads'&&auth.user.role==='LOGISTICS')||(route==='users'&&!isAdmin)?'dashboard':route;
+ const current=[...permittedNav,...LOCKED].find(x=>x.id===selectedPage)||permittedNav[0];
  const Icon=current.icon;
  return <div className="ct-shell">
   <aside className={'ct-sidebar '+(drawer?'open':'')} aria-label="Điều hướng chính">
@@ -241,9 +321,10 @@ function CRMApp(){
   </aside>
   {drawer&&<button className="ct-drawer-overlay" aria-label="Đóng menu" onClick={()=>setDrawer(false)}/>}
   <div className="ct-main">
-   <header className="ct-header"><div className="ct-header-left"><button className="ct-icon-button ct-menu-button" onClick={()=>setDrawer(true)} aria-label="Mở menu"><Menu size={22}/></button><div className="ct-breadcrumb"><small>CT FOOD / {current.name}</small><h1><Icon size={20}/>{current.name}</h1></div></div><div className="ct-header-right"><span className="ct-connected"><span/> D1 ĐANG KẾT NỐI</span><div className="ct-user"><strong>{auth.user.full_name||'Người dùng CRM'}</strong><small>{auth.user.role}</small></div><a className="ct-logout" href={"/cdn-cgi/access/logout?returnTo="+encodeURIComponent("https://crm-ctfood.pages.dev/login")} title="Đăng xuất Cloudflare Access" aria-label="Đăng xuất"><LogOut size={19}/></a></div></header>
+   <header className="ct-header"><div className="ct-header-left"><button className="ct-icon-button ct-menu-button" onClick={()=>setDrawer(true)} aria-label="Mở menu"><Menu size={22}/></button><div className="ct-breadcrumb"><small>CT FOOD / {current.name}</small><h1><Icon size={20}/>{current.name}</h1></div></div><div className="ct-header-right"><span className="ct-connected"><span/> D1 ĐANG KẾT NỐI</span><div className="ct-user"><strong>{auth.user.full_name||'Người dùng CRM'}</strong><small>{ROLE_LABEL[auth.user.role]||auth.user.role}</small></div><a className="ct-logout" href={"/cdn-cgi/access/logout?returnTo="+encodeURIComponent("https://crm-ctfood.pages.dev/login")} title="Đăng xuất Cloudflare Access" aria-label="Đăng xuất"><LogOut size={19}/></a></div></header>
    <main className="ct-content"><div className="ct-live-info"><ShieldCheck size={16}/><span>Dữ liệu danh mục từ D1 · Đăng nhập: {auth.user.email} · Đơn hàng, giao nhận và công nợ chưa mở ghi thực tế</span></div>
     {selectedPage==='dashboard'?<Dashboard summary={summary} loading={stats.loading} error={stats.error} onRetry={loadSummary} onNavigate={changePage} updatedAt={updatedAt}/>
+     :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
      :LIVE.includes(selectedPage)?<MasterList key={selectedPage} entity={selectedPage} role={auth.user.role} onSaved={loadSummary}/>
      :<Pending page={selectedPage}/>}
     <footer className="ct-footer">CT FOOD CRM V0.4 · Dữ liệu D1 có xác thực · Chưa nghiệm thu các phân hệ tài chính</footer>

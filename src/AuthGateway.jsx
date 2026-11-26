@@ -8,6 +8,8 @@ import './auth.css';
  * Username/password sign-in MUST stay disabled until independently reviewed
  * backend authentication, password hashing, sessions and lockout exist.
  */
+// AUTH-05 hoãn (26/11/2026): chỉ dùng Google. Đặt true khi đã có backend mật khẩu được duyệt.
+const PASSWORD_LOGIN_ENABLED=false;
 const googleConfigured=import.meta.env.VITE_GOOGLE_OAUTH_ENABLED==='true';
 const REAUTH='https://crm-ctfood.pages.dev/cdn-cgi/access/logout?returnTo='+encodeURIComponent('https://crm-ctfood.pages.dev/login');
 export function LoginPanel({error='',loading=false,onRetry}){
@@ -24,12 +26,12 @@ export function LoginPanel({error='',loading=false,onRetry}){
     <div className="ct-login-mobile-brand"><span className="ct-auth-brand-logo">CT</span><strong>CT FOOD CRM</strong></div>
     <div className="ct-login-eyebrow">CHÀO MỪNG TRỞ LẠI</div>
     <h1>{loading?'Đang xác minh tài khoản':'Đăng nhập'}</h1>
-    <p className="ct-auth-desc">Chọn phương thức để truy cập hệ thống quản trị CT FOOD.</p>
-    <div className="ct-login-tabs" role="tablist" aria-label="Phương thức đăng nhập">
+    <p className="ct-auth-desc">Đăng nhập bằng tài khoản Google đã được quản trị viên CT FOOD cấp quyền.</p>
+    {PASSWORD_LOGIN_ENABLED&&<div className="ct-login-tabs" role="tablist" aria-label="Phương thức đăng nhập">
      <button type="button" role="tab" aria-selected={method==='google'} className={method==='google'?'active':''} onClick={()=>setMethod('google')}>Tài khoản Google</button>
      <button type="button" role="tab" aria-selected={method==='password'} className={method==='password'?'active':''} onClick={()=>setMethod('password')}>Tên đăng nhập / mật khẩu</button>
-    </div>
-    {method==='google'?<div role="tabpanel" className="ct-login-panel">
+    </div>}
+    {method==='google'||!PASSWORD_LOGIN_ENABLED?<div role="tabpanel" className="ct-login-panel">
      <p className="ct-auth-label">Đăng nhập bằng tài khoản đã được cấp quyền</p>
      <a className="ct-auth-google ct-auth-google-action" href={REAUTH}><span className="ct-google-logo" aria-hidden="true">G</span> Tiếp tục với Google qua Access</a>
      <p className="ct-login-helper">{googleConfigured?'Bạn sẽ được chuyển tới Cloudflare Access để chọn Google và xác minh tài khoản.':'Lựa chọn Google cần được kích hoạt trong cấu hình Cloudflare Access.'}</p>

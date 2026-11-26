@@ -78,6 +78,14 @@ npx wrangler d1 execute ctfood-crm --remote --file=seeds/demo_cleanup.sql   # xo
 
 File xoá gỡ bản ghi `DEMO-…`, các bản ghi tạo trên giao diện có tên bắt đầu bằng `[DEMO]` (ví dụ `[DEMO] UAT KH 001`), và nhật ký sửa của chúng. Khi chạy UAT, hãy đặt tên bản ghi thử bắt đầu bằng `[DEMO]` để được dọn tự động.
 
+## Quản lý người dùng (chỉ ADMIN)
+
+Menu **Người dùng & phân quyền** cho phép ADMIN thêm tài khoản (email Google, họ tên, vai trò), đổi vai trò và khóa/mở khóa. Khóa có hiệu lực ngay với mọi API. Hệ thống không cho ADMIN tự hạ quyền hoặc tự khóa chính mình, và mọi thay đổi được ghi `audit_log` (`entity='app_users'`).
+
+Đăng nhập cần **đủ 2 lớp**: email nằm trong policy Cloudflare Access của ứng dụng "CT FOOD CRM - Authorized Users", và tài khoản **đang hoạt động** trong CRM. Thêm người ở CRM mà chưa thêm vào Access thì người đó vẫn bị Access chặn.
+
+Cần migration `0004_app_users_versioning.sql` (`npx wrangler d1 migrations apply ctfood-crm --remote`).
+
 ## Quy ước dữ liệu
 
 - Trạng thái khách hàng lưu bằng mã: `ACTIVE`, `PROSPECT`, `INACTIVE`. Giai đoạn khách tiềm năng: `NEW`, `CONTACTING`, `QUOTED`, `CONVERTED`, `REJECTED`. Giao diện hiển thị nhãn tiếng Việt; API nhận cả mã lẫn nhãn và luôn lưu mã. Trigger trong D1 chặn giá trị khác.

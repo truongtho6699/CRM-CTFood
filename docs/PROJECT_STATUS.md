@@ -25,7 +25,7 @@
 | AUTH-01 | Google OAuth qua Cloudflare Zero Trust Access | ✅ Đã cấu hình | Google IdP duy nhất trên Access app CRM; vẫn cần UAT thực tế |
 | AUTH-02 | Loại bỏ Cloudflare email OTP **khỏi lựa chọn đăng nhập CRM** | ✅ Đã cấu hình | `allowed_idps` chỉ chứa Google; không xóa IdP toàn tài khoản |
 | AUTH-03 | Trang đăng nhập CT FOOD riêng `/login` | ✅ Đã triển khai | `functions/login.js`, Access bypass chỉ tại `/login` |
-| AUTH-04 | Màn hình có 2 phương thức User/Password và Google | 🟡 Đã có UI | User/Password hiện **disabled**, Google dẫn tới tên miền CRM được bảo vệ |
+| AUTH-04 | Màn hình đăng nhập | ✅ Chỉ Google | Tab User/Password đã ẩn do AUTH-05 hoãn |
 | SEC-01 | Kiểm tra JWT Access + ánh xạ tài khoản D1, RBAC theo vai trò | ✅ Có mã và test tự động | `worker/src/index.js`, `tests/rbac-api.test.mjs` |
 | SEC-02 | Hạn chế Sales xem trường tài chính; tách quyền Logistics | ✅ Có mã và test tự động | API SQL chọn cột theo vai trò; UI phân hệ |
 | SEC-03 | Kiểm soát sửa trùng bằng `expected_updated_at`, chuẩn hóa trạng thái | ✅ Có mã và test | Worker, `tests/migration-0003.test.mjs`, `README.md` |
@@ -42,7 +42,7 @@
 
 | Ưu tiên | ID | Hạng mục | Trạng thái và điều kiện hoàn tất | Phụ trách đề xuất |
 | --- | --- | --- | --- | --- |
-| P0 | AUTH-05 | Đăng nhập bằng User/Password thực sự | ❌ Chưa có backend mật khẩu; cần chốt kiến trúc IdP hoặc dịch vụ auth có hash, rate-limit, lockout, reset, cookie HttpOnly, audit, session revoke, UAT | DEV + quản trị |
+| P0→Hoãn | AUTH-05 | Đăng nhập bằng User/Password thực sự | ⏸️ **Hoãn theo quyết định chủ dự án (26/11/2026): chỉ dùng Google.** Đã ẩn tab mật khẩu trên màn đăng nhập và trang `/login` (cờ `PASSWORD_LOGIN_ENABLED` trong `src/AuthGateway.jsx`). Khi mở lại: ưu tiên IdP OIDC gắn vào Access, không tự lưu mật khẩu | Chủ dự án |
 | P0 | UAT-01 | Google OAuth end-to-end trên ứng dụng | ✅ Đạt với ADMIN (26/11/2026) — xem mục 7. Còn lại: thử tài khoản chưa được cấp quyền và đăng xuất | ADMIN + QA |
 | P0 | UAT-02 | CRUD và audit end-to-end | ✅ Đạt với ADMIN (26/11/2026) — xem mục 7. Quyền của vai trò khác chuyển sang SEC-04 | QA + nghiệp vụ |
 | P0 | DATA-02 | Xác nhận dữ liệu DEMO và kế hoạch trước khi nhập thật | ❌ Chưa dọn DEMO; **không chạy cleanup khi chưa sao lưu và được chủ quản phê duyệt** | DATA + quản trị |
@@ -56,7 +56,7 @@
 | P1 | OPS-01 | Sao lưu, kiểm thử restore, khóa kỳ, rollback và giám sát | ❌ Chưa có biên bản nghiệm thu khôi phục DB / vận hành | DEVOPS |
 | P1 | QA-02 | Lighthouse/Web Vitals, mobile, tải dữ liệu lớn và benchmark API | ❌ Chưa đo/kiểm thử với người dùng thật | UIUX + QA |
 | P1 | SEC-05 | Kiểm tra bảo vệ toàn bộ đường dẫn preview và domain phụ | ✅ Đạt (26/11/2026) — `*.crm-ctfood.pages.dev` đã thêm vào Access app; xem mục 7. Lưu ý: Worker thừa `ctfood-crm` (chỉ file tĩnh, không D1) đã tắt build, nên xoá hẳn nếu không dùng | DEVOPS + QA |
-| P2 | ADM-01 | Màn hình quản lý người dùng, cấp quyền, thu hồi quyền | ❌ Chưa có phân hệ quản trị người dùng hoàn chỉnh | BA + DEV |
+| P2 | ADM-01 | Màn hình quản lý người dùng, cấp quyền, thu hồi quyền | 🟡 Có mã + test (PR #4): ADMIN thêm/sửa/khóa tài khoản, đổi vai trò, có audit, chống tự khóa, khóa lạc quan. Cần chạy migration 0004 rồi UAT. Lưu ý: tài khoản mới vẫn phải được thêm vào policy Cloudflare Access | BA + DEV |
 | P2 | DOC-02 | Đồng bộ `README.md`, `DEPLOYMENT.md` và các tài liệu cũ đang nhắc `localStorage`/Cloudflare OTP | ✅ Đã đồng bộ (26/11/2026): README, DEPLOYMENT, AUTH_DUAL_METHOD. `PROJECT_CONTEXT.md` giữ nguyên là nhật ký lịch sử | DEV + BA |
 
 ## 4. LỘ TRÌNH ĐỀ XUẤT
