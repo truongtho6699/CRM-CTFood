@@ -32,3 +32,7 @@ a.ct-btn{text-decoration:none}
 .ct-toolbar-wrap{flex-wrap:wrap}.ct-segment{display:inline-flex;background:#f0f5f6;border-radius:10px;padding:4px;gap:2px}.ct-segment button{border:0;background:transparent;padding:8px 13px;border-radius:7px;font-size:13px;font-weight:600;color:#3f5c66;min-height:36px}.ct-segment button.active{background:#fff;color:#0b6f5b;box-shadow:0 1px 4px #0f2f3a1f}
 .ct-nav-badge{flex:0 0 auto!important;font-size:9px;font-weight:700;letter-spacing:.3px;background:#f5e9c8;color:#7a5a0e;border-radius:10px;padding:3px 6px}
 @media(max-width:760px){.ct-detail-grid{grid-template-columns:1fr}}
+.ct-data-table .ct-id{white-space:nowrap}.ct-muted{color:#647d86;font-size:12px}.ct-neg{color:#a63b35}.ct-pos{color:#126c4f}.ct-pending-dot{color:#9a6a00;font-weight:700;font-size:12px}
+.ct-deliveries{margin-top:22px;border-top:1px solid #e3eaec;padding-top:6px}.ct-ticket-form{border:1px solid #cfe3dc;background:#f6fbf9;border-radius:10px;padding:4px 16px 16px;margin-bottom:14px}
+.ct-row-actions{display:inline-flex;gap:6px;flex-wrap:wrap}.ct-row-actions .ct-text-button,.ct-inline-cancel .ct-text-button{min-height:34px;padding:5px 9px;font-size:12px;display:inline-flex;align-items:center;gap:4px}
+.ct-inline-cancel{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}.ct-inline-cancel input{min-height:34px;border:1px solid #d9c3c0;border-radius:7px;padding:5px 8px;font:inherit;font-size:12px;min-width:150px}.ct-text-button.danger{color:#a63b35;background:#fff0ee}

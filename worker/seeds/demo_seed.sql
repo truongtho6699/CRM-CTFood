@@ -72,6 +72,15 @@ INSERT INTO order_lines(id,order_id,product_id,contracted_kg,unit_price_ex_vat,d
  ('DEMO-DL07','DEMO-DH05','DEMO-SP07',500,215000,2000)) v
  JOIN orders o ON o.id=v.column2 AND o.status='PENDING'
  WHERE NOT EXISTS(SELECT 1 FROM order_lines x WHERE x.id=v.column1);
+-- Phiếu cân mẫu (cần migration 0006): DH01 giao 2 đợt từ 2 container (1 đã xác nhận, 1 chờ), DH03 giao đủ đã xác nhận.
+-- Chỉ chèn khi đơn còn PENDING và phiếu chưa có (chạy lại file không lỗi).
+INSERT INTO deliveries(id,order_line_id,delivered_kg,delivery_date,vehicle_plate,container_no,weigh_ticket_no,note,status,verified_by,verified_at,created_by,updated_at)
+ SELECT v.column1,v.column2,v.column3,v.column4,v.column5,v.column6,v.column7,'[DEMO]',v.column8,v.column9,v.column10,'sale.an@demo.ctfood.invalid','2026-11-26T03:00:00.000Z' FROM (VALUES
+ ('DEMO-PC01','DEMO-DL01',13020.5,'2026-11-24','29C-123.45','SZLU9458358','PC-DEMO-001','VERIFIED','sale.binh@demo.ctfood.invalid','2026-11-25T03:00:00.000Z'),
+ ('DEMO-PC02','DEMO-DL01',13950,'2026-11-26','29C-678.90','EMCU5468130','PC-DEMO-002','PENDING',NULL,NULL),
+ ('DEMO-PC03','DEMO-DL04',1198.4,'2026-11-15','51D-111.22','ONEU9208178','PC-DEMO-003','VERIFIED','sale.binh@demo.ctfood.invalid','2026-11-15T09:00:00.000Z')) v
+ JOIN order_lines l ON l.id=v.column2 JOIN orders o ON o.id=l.order_id AND o.status='PENDING'
+ WHERE NOT EXISTS(SELECT 1 FROM deliveries x WHERE x.id=v.column1);
 UPDATE orders SET status='SUCCESS',status_note='Đã giao đủ theo phiếu cân',status_by='truongphong@demo.ctfood.invalid',status_at='2026-11-16T03:00:00.000Z'
  WHERE id='DEMO-DH03' AND status='PENDING';
 UPDATE orders SET status='CANCELLED',status_note='Khách hoãn mua sang quý sau',status_by='truongphong@demo.ctfood.invalid',status_at='2026-11-18T03:00:00.000Z'

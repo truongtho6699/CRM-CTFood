@@ -123,6 +123,11 @@ test('chuyển trạng thái: Sale Admin xác nhận thành công, TPKD hủy c�
  assert.equal((await call(env,'sadmin@ct.test','/api/orders/'+b.json.data.id+'/status',{method:'POST',body:{status:'CANCELLED',note:'x',expected_updated_at:b.json.data.updated_at}})).status,403);
  // Hủy thiếu lý do.
  assert.equal((await call(env,'tpkd@ct.test','/api/orders/'+b.json.data.id+'/status',{method:'POST',body:{status:'CANCELLED',note:'  ',expected_updated_at:b.json.data.updated_at}})).status,400);
+ // LOG-01: chưa có phiếu cân được Kế toán xác nhận thì chưa "Thành công".
+ assert.equal((await call(env,'sadmin@ct.test','/api/orders/'+a.json.data.id+'/status',{method:'POST',body:{status:'SUCCESS',expected_updated_at:a.json.data.updated_at}})).status,409);
+ const lineId=db.prepare('SELECT id FROM order_lines WHERE order_id=? LIMIT 1').get(a.json.data.id).id;
+ const t=await call(env,'sadmin@ct.test','/api/deliveries',{method:'POST',body:{order_line_id:lineId,delivered_kg:26950,delivery_date:'2026-12-05'}});
+ assert.equal((await call(env,'kt@ct.test','/api/deliveries/'+t.json.data.id+'/status',{method:'POST',body:{status:'VERIFIED',expected_updated_at:t.json.data.updated_at}})).status,200);
  const ok=await call(env,'sadmin@ct.test','/api/orders/'+a.json.data.id+'/status',{method:'POST',body:{status:'SUCCESS',expected_updated_at:a.json.data.updated_at}});
  assert.equal(ok.status,200);
  const cancel=await call(env,'tpkd@ct.test','/api/orders/'+b.json.data.id+'/status',{method:'POST',body:{status:'CANCELLED',note:'Khách đổi kế hoạch',expected_updated_at:b.json.data.updated_at}});

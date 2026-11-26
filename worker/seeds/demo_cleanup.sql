@@ -10,6 +10,10 @@ DELETE FROM audit_log WHERE entity_id IN (
 -- Đơn hàng của khách DEMO / khách [DEMO] (kể cả đơn tạo trên giao diện): xoá nhật ký, dòng hàng, rồi đơn.
 DELETE FROM audit_log WHERE entity='orders' AND entity_id IN (SELECT id FROM orders WHERE id LIKE 'DEMO-%' OR customer_id LIKE 'DEMO-%'
  OR customer_id IN (SELECT id FROM customers WHERE substr(name,1,6)='[DEMO]'));
+DELETE FROM audit_log WHERE entity='deliveries' AND entity_id IN (SELECT d.id FROM deliveries d JOIN order_lines l ON l.id=d.order_line_id JOIN orders o ON o.id=l.order_id
+ WHERE o.id LIKE 'DEMO-%' OR o.customer_id LIKE 'DEMO-%' OR o.customer_id IN (SELECT id FROM customers WHERE substr(name,1,6)='[DEMO]'));
+DELETE FROM deliveries WHERE order_line_id IN (SELECT l.id FROM order_lines l JOIN orders o ON o.id=l.order_id
+ WHERE o.id LIKE 'DEMO-%' OR o.customer_id LIKE 'DEMO-%' OR o.customer_id IN (SELECT id FROM customers WHERE substr(name,1,6)='[DEMO]'));
 DELETE FROM order_lines WHERE order_id IN (SELECT id FROM orders WHERE id LIKE 'DEMO-%' OR customer_id LIKE 'DEMO-%'
  OR customer_id IN (SELECT id FROM customers WHERE substr(name,1,6)='[DEMO]'));
 DELETE FROM orders WHERE id LIKE 'DEMO-%' OR customer_id LIKE 'DEMO-%'

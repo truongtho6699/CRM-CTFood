@@ -6,10 +6,10 @@ import {LoginPanel} from './AuthGateway.jsx';
 import {SCHEMAS} from './data.js';
 import {Status,Notice,jsonFetch,toText} from './ui.jsx';
 import {OrdersPage} from './Orders.jsx';
+import {DeliveriesPage} from './Deliveries.jsx';
 
 const LIVE=['customers','leads','products'];
 const LOCKED=[
- {id:'deliveries',name:'Giao hàng & phiếu cân',icon:Truck,description:'Chưa nghiệm thu dữ liệu cân thực tế và xác nhận giao'},
  {id:'payments',name:'Thu tiền & công nợ',icon:Wallet,description:'Chưa nghiệm thu phân bổ thanh toán và công nợ'},
  {id:'kpi',name:'Báo cáo & KPI',icon:ChartColumn,description:'Chưa tích hợp KPI đang vận hành; không sử dụng số liệu mẫu'},
 ];
@@ -19,6 +19,7 @@ const NAV=[
  {id:'leads',name:'Khách tiềm năng',icon:UserPlus},
  {id:'products',name:'Sản phẩm',icon:Package},
  {id:'orders',name:'Đơn hàng',icon:ShoppingCart,badge:'Thử nghiệm'},
+ {id:'deliveries',name:'Giao hàng & phiếu cân',icon:Truck,badge:'Thử nghiệm'},
 ];
 // Khớp ROLES trong worker/src/index.js.
 const ROLE_LABEL={ADMIN:'Quản trị hệ thống',BOD:'Ban Giám đốc',ACCOUNTING:'Kế toán',SALES_MANAGER:'Trưởng phòng kinh doanh',SALES:'Nhân viên kinh doanh',SALES_ADMIN:'Sale Admin',LOGISTICS:'Kho / Logistics'};
@@ -357,6 +358,7 @@ function CRMApp(){
     {selectedPage==='dashboard'?<Dashboard summary={summary} loading={stats.loading} error={stats.error} onRetry={loadSummary} onNavigate={changePage} updatedAt={updatedAt}/>
      :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
      :selectedPage==='orders'?<OrdersPage user={auth.user}/>
+     :selectedPage==='deliveries'?<DeliveriesPage user={auth.user}/>
      :selectedPage==='profile'?<AccountProfile user={auth.user}/>
      :selectedPage==='password'?<AccountPassword/>
      :LIVE.includes(selectedPage)?<MasterList key={selectedPage} entity={selectedPage} role={auth.user.role} onSaved={loadSummary}/>

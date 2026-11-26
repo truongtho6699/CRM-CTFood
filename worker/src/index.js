@@ -1,6 +1,7 @@
 import {createRemoteJWKSet,jwtVerify} from 'jose';
 import {response,bad,trimText,readJson,fail} from './http.js';
 import {handleOrders} from './orders.js';
+import {handleDeliveries} from './deliveries.js';
 
 function assertConfig(env){if(!env.DB||!env.CF_ACCESS_TEAM_DOMAIN||!env.CF_ACCESS_AUD)throw new Error('API chưa được cấu hình D1 / Cloudflare Access')}
 // Cache JWKS per issuer across requests in the same isolate (jose handles key rotation/cooldown).
@@ -239,6 +240,8 @@ export function createWorker({getKeys=remoteKeys}={}){return{
 
    const orders=await handleOrders(env,user,request,url);
    if(orders)return orders;
+   const deliveries=await handleDeliveries(env,user,request,url);
+   if(deliveries)return deliveries;
    const um=url.pathname.match(/^\/api\/users(?:\/([^/]+))?$/);
    if(um){
     if(request.method==='GET'&&!um[1])return await listUsers(env,user);

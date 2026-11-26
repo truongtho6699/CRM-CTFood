@@ -91,7 +91,10 @@ function dbError(e){
 }
 const SELECT_ORDER=`SELECT o.id,o.code,o.customer_id,c.name AS customer_name,o.sales_email,u.full_name AS sales_name,o.order_type,o.status,
  o.expected_date,o.delivery_address,o.note,o.deposit_expected,o.container_count,o.status_note,o.status_by,o.status_at,o.created_by,o.created_at,o.updated_at,
- COALESCE(SUM(l.contracted_kg),0) AS total_kg,COALESCE(SUM(l.contracted_kg*l.unit_price_ex_vat),0) AS total_amount,COUNT(l.id) AS line_count
+ COALESCE(SUM(l.contracted_kg),0) AS total_kg,COALESCE(SUM(l.contracted_kg*l.unit_price_ex_vat),0) AS total_amount,COUNT(l.id) AS line_count,
+ (SELECT COALESCE(SUM(d.delivered_kg),0) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id AND d.status='VERIFIED') AS delivered_kg,
+ (SELECT COUNT(*) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id AND d.status='PENDING') AS pending_tickets,
+ (SELECT COUNT(*) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id) AS ticket_count
  FROM orders o JOIN customers c ON c.id=o.customer_id LEFT JOIN app_users u ON u.email=o.sales_email LEFT JOIN order_lines l ON l.order_id=o.id`;
 
 async function listOrders(env,user,params){
@@ -116,7 +119,10 @@ async function loadOrder(env,user,id){
 async function getOrder(env,user,id){
  const order=await loadOrder(env,user,id);
  if(!order)return bad('Không tìm thấy đơn hàng',404);
- const {results}=await env.DB.prepare('SELECT l.id,l.product_id,p.name AS product_name,p.unit,l.contracted_kg,l.unit_price_ex_vat,l.commission_per_kg,l.contracted_kg*l.unit_price_ex_vat AS amount FROM order_lines l JOIN products p ON p.id=l.product_id WHERE l.order_id=? ORDER BY l.rowid').bind(id).all();
+ const {results}=await env.DB.prepare(`SELECT l.id,l.product_id,p.name AS product_name,p.unit,l.contracted_kg,l.unit_price_ex_vat,l.commission_per_kg,l.contracted_kg*l.unit_price_ex_vat AS amount,
+ (SELECT COALESCE(SUM(d.delivered_kg),0) FROM deliveries d WHERE d.order_line_id=l.id AND d.status='VERIFIED') AS verified_kg,
+ (SELECT COALESCE(SUM(d.delivered_kg),0) FROM deliveries d WHERE d.order_line_id=l.id AND d.status='PENDING') AS pending_kg
+ FROM order_lines l JOIN products p ON p.id=l.product_id WHERE l.order_id=? ORDER BY l.rowid`).bind(id).all();
  return response({ok:true,data:{...order,lines:results||[]}});
 }
 async function createOrder(env,user,request){
@@ -160,6 +166,8 @@ async function updateOrder(env,user,request,id){
  if(!old)return bad('Không tìm thấy đơn hàng',404);
  if(old.status!=='PENDING')return bad('Chỉ sửa được đơn đang Chờ giao',409);
  if(old.updated_at!==expected)return bad(CONFLICT,409);
+ // LOG-01: phiếu cân trỏ vào dòng hàng → không thay dòng khi đơn đã có phiếu (kể cả phiếu đã hủy).
+ if(old.ticket_count>0)return bad('Đơn đã có phiếu cân nên không sửa được dòng hàng. Hủy đơn và tạo đơn mới nếu cần đổi hàng.',409);
  const v=validateOrder(p);
  await checkProducts(env,v.lines);
  const now=new Date().toISOString();
@@ -190,6 +198,12 @@ async function changeStatus(env,user,request,id){
  const old=await loadOrder(env,user,id);
  if(!old)return bad('Không tìm thấy đơn hàng',404);
  if(old.status!=='PENDING'||old.updated_at!==expected)return bad(CONFLICT,409);
+ // LOG-01: "Thành công" khi đã có số kg thực giao được Kế toán xác nhận và không còn phiếu chờ; hủy khi không còn phiếu hiệu lực.
+ if(status==='SUCCESS'&&(old.pending_tickets>0||!(old.delivered_kg>0)))return bad(old.pending_tickets>0?'Còn '+old.pending_tickets+' phiếu cân chờ Kế toán xác nhận':'Chưa có phiếu cân nào được Kế toán xác nhận',409);
+ if(status==='CANCELLED'&&old.ticket_count>0){
+  const live=await env.DB.prepare("SELECT COUNT(*) AS n FROM deliveries d JOIN order_lines l ON l.id=d.order_line_id WHERE l.order_id=? AND d.status<>'CANCELLED'").bind(id).first();
+  if(live?.n>0)return bad('Đơn còn phiếu cân chưa hủy. Hủy các phiếu cân trước khi hủy đơn.',409);
+ }
  const now=new Date().toISOString();
  const stmts=[
   env.DB.prepare("UPDATE orders SET status=?,status_note=?,status_by=?,status_at=?,updated_at=? WHERE id=? AND updated_at=? AND status='PENDING'").bind(status,note||null,user.email,now,now,id,expected),
