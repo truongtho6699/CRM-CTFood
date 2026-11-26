@@ -416,7 +416,7 @@ function CRMApp(){
   <div className="ct-main">
    <header className="ct-header"><div className="ct-header-left"><button className="ct-icon-button ct-menu-button" onClick={()=>setDrawer(true)} aria-label="Mở menu"><Menu size={22}/></button><div className="ct-breadcrumb"><small>CT FOOD / {CATALOG_NAV.some(item=>item.id===selectedPage)?'Quản lý danh mục / ':ADMIN_NAV.some(item=>item.id===selectedPage)?'Quản trị hệ thống / ':''}{current.name}</small><h1><Icon size={20}/>{current.name}</h1></div></div><div className="ct-header-right"><UserMenu user={auth.user} onNavigate={changePage}/></div></header>
    <main className="ct-content" id="ct-main-content">
-    {stats.error&&<Notice type="error">Không tải được số liệu tổng quan: {stats.error} <button className="ct-text-button" type="button" onClick={loadSummary} disabled={stats.loading}>Thử lại</button></Notice>}
+    {stats.error&&selectedPage==='dashboard'&&<Notice type="error">Không tải được số liệu tổng quan: {stats.error} <button className="ct-text-button" type="button" onClick={loadSummary} disabled={stats.loading}>Thử lại</button></Notice>}
     {selectedPage==='dashboard'?<WorkDashboard user={auth.user} summary={summary} onNavigate={changePage}/>
      :selectedPage==='users'?<UsersAdmin self={auth.user.email}/>
      :selectedPage==='imports'?<AdminExcelImport/>
