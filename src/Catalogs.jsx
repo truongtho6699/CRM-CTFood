@@ -63,11 +63,11 @@ export function ContainerCatalog({user}){
    <div className="ct-actions"><button type="button" className="ct-btn secondary" onClick={reload} disabled={loading}><RefreshCcw size={17}/> Làm mới</button>{canWrite&&<button type="button" className="ct-btn primary" onClick={open}><Plus size={17}/> Thêm container</button>}</div></div>
   <Notice>Chỉ quản lý mã container và sản phẩm liên kết. Số lượng, tồn kho, giá vốn và phiếu cân chỉ được cập nhật qua nghiệp vụ kho sau nghiệm thu.</Notice>
   {note&&<Notice type="success">{note}</Notice>}
-  {error&&<Notice type="error">{error}</Notice>}
+  {error&&!showForm&&<Notice type="error">Không tải được dữ liệu hoặc không thể thực hiện thao tác: {error} <button type="button" className="ct-text-button" onClick={reload}>Thử tải lại</button></Notice>}
   <label className="ct-search" style={{marginBottom:18}}><Search size={18}/><input aria-label="Tìm mã container hoặc mã sản phẩm" placeholder="Tìm mã container, mã hàng..." value={query} onChange={e=>setQuery(e.target.value)}/></label>
-  {loading?<div className="ct-loading" role="status">Đang tải danh mục...</div>
+  {loading?<div className="ct-loading" role="status" aria-live="polite"><span>Đang tải danh sách container...</span>{[0,1,2].map(i=><div key={i} className="ct-skeleton"/>)}</div>
    :rows.length===0?<div className="ct-empty"><Boxes size={30}/><strong>Chưa có mã container</strong><p>Hãy thêm container hoặc thay đổi từ khóa tìm kiếm.</p></div>
-   :<><div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr><th>Mã container</th><th>Mã hàng liên kết</th><th>Tên hàng theo file cũ</th><th>Trạng thái</th><th>Khối lượng (kg)</th></tr></thead>
+   :<><div className="ct-tablebox" role="region" aria-label="Danh sách container" tabIndex={0}><table className="ct-data-table ct-compact"><thead><tr><th>Mã container</th><th>Mã hàng liên kết</th><th>Tên hàng theo file cũ</th><th>Trạng thái</th><th>Khối lượng (kg)</th></tr></thead>
     <tbody>{rows.map(row=><tr key={row.id}><td data-label="Mã container" className="c-title">{row.id}</td><td data-label="Mã hàng" className="c-sub">{row.product_id}</td><td data-label="Tên hàng nguồn">{row.source_product_name||"—"}</td><td data-label="Trạng thái">{row.status==='PLANNED'?'Đã khai báo':row.status||'—'}</td><td data-label="Khối lượng">{Number(row.quantity_kg||0).toLocaleString('vi-VN')}</td></tr>)}</tbody></table></div>
     <div className="ct-pagination"><span>Dòng {page*LIMIT+1}–{page*LIMIT+rows.length}</span><div><button type="button" className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={16}/> Trước</button><button type="button" className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={16}/></button></div></div></>}
   {showForm&&<div className="backdrop ct-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!saving)setShowForm(false)}}>
