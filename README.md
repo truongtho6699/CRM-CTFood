@@ -82,6 +82,10 @@ File xoá gỡ bản ghi `DEMO-…`, các bản ghi tạo trên giao diện có 
 
 Tạo và theo dõi đơn nhiều dòng hàng theo tab "Lưu đồ": khách hàng, loại đơn (Offer / sẵn kho), ngày giao dự kiến, địa điểm, cọc dự kiến, số container, dòng hàng (sản phẩm, kg, giá chưa VAT, chiết khấu/hoa hồng đ/kg). Trạng thái: Chờ giao → Thành công (Sale Admin) hoặc Hủy (TPKD/BGĐ, bắt buộc lý do). **Chưa tính KPI và chưa ghi tiền.** Các quy tắc là giả định tạm — xem `docs/PROJECT_STATUS.md` mục 8. Cần migration `0005_orders_workflow.sql`.
 
+## Giao hàng & phiếu cân (thử nghiệm, LOG-01)
+
+Trong **Đơn hàng → Xem**, Sale Admin / Kho / Kế toán thêm phiếu cân cho từng lần giao (dòng hàng, KL cân thực tế, ngày, số phiếu, số container, biển số xe). **Kế toán xác nhận** phiếu tại trang **Giao hàng & phiếu cân** (mặc định lọc "Chờ xác nhận"). Chi tiết đơn hiển thị KL đặt, KL đã xác nhận, KL chờ và chênh lệch. Đơn chỉ chuyển "Thành công" khi có phiếu đã xác nhận và không còn phiếu chờ. Giả định tạm: `docs/PROJECT_STATUS.md` mục 9. Cần migration `0006_deliveries_workflow.sql`.
+
 ## Menu Tài khoản
 
 Mọi người dùng có nhóm menu **Tài khoản**:

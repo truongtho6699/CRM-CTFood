@@ -49,7 +49,7 @@
 | P0 | DATA-03 | Module import lịch sử từ template Google Sheets/Excel | ❌ Chưa phát triển. Đã phân tích mẫu khách hàng/NCC, hàng hóa, container, giao dịch; cần staging, mapping, phát hiện trùng, duyệt, audit và rollback | BA + DATA + DEV |
 | P0 | BIZ-01 | Chốt BRD các quy tắc đơn hàng, giao thực, VAT, công nợ, giá vốn, hoa hồng, KPI | ❌ Các câu hỏi P0 trong tab `Rivew 1` còn phải chốt; **không bật ghi tài chính** | BGĐ + Sales + Kế toán |
 | P1 | ORDER-01 | CRUD đơn hàng nhiều dòng, trạng thái, giá bán và duyệt ngoại lệ | 🟡 Có mã + test (PR #5) theo **giả định tạm** ở mục 8: tạo/sửa đơn nhiều dòng, 3 trạng thái, Sale Admin xác nhận giao, TPKD/BGĐ hủy có lý do, audit. **Chưa tính KPI, chưa ghi tiền.** Cần migration 0005, UAT và BGĐ chốt C01–C05 | BA + DEV |
-| P1 | LOG-01 | Container, tồn kho, phiếu cân, nhiều lần giao và đối chiếu số kg thực tế | ❌ Chưa phát hành ghi vận hành thật | Kho + DEV |
+| P1 | LOG-01 | Container, tồn kho, phiếu cân, nhiều lần giao và đối chiếu số kg thực tế | 🟡 Phiếu cân + giao nhiều lần có mã + test (PR #6) theo **giả định tạm** ở mục 9: Sale Admin/Kho/Kế toán nhập, **Kế toán xác nhận kg thực giao**, hiển thị chênh lệch. Container/tồn kho/giá vốn **chưa làm**. Cần migration 0006, UAT, BGĐ chốt D01/D03/D04 | Kho + DEV |
 | P1 | FIN-01 | Đặt cọc, thu tiền từng phần, công nợ, đối soát, hóa đơn | ❌ Chưa phát hành ghi tài chính thật | Kế toán + DEV |
 | P1 | KPI-01 | Kết nối dashboard KPI hiện có | ❌ Chưa tích hợp; cần bảo toàn hệ thống KPI độc lập | Quản trị KPI + DATA |
 | P1 | SEC-04 | UAT RBAC bằng tài khoản Sales/Logistics/Kế toán thật | ⏳ Test tự động có nhưng chưa kiểm thử qua phiên thực tế | QA + quản trị |
@@ -127,3 +127,15 @@ Nguồn: tab "Lưu đồ" của file "2026-CTF_Hoàn thiện phần mềm". Mỗ
 | C06 Cọc | Chỉ lưu **cọc dự kiến** (số tiền); cọc thực nhận thuộc phân hệ Thu tiền (FIN-01) | — |
 
 **Chưa làm trong ORDER-01 (để phân hệ sau):** giao nhiều lần và số kg thực giao (LOG-01) — hiện "Thành công" do Sale Admin xác nhận thủ công; tiền cọc/thanh toán thực (FIN-01); KPI và lợi nhuận (KPI-01).
+
+## 9. GIẢ ĐỊNH TẠM CHO GIAO HÀNG & PHIẾU CÂN (LOG-01) — CHỜ BGĐ CHỐT
+
+| Câu | Giả định đang áp dụng | Ở đâu trong mã |
+| --- | --- | --- |
+| D01 Nhiều container | Mỗi **phiếu cân gắn một dòng hàng** của đơn; một dòng giao **nhiều lần**, mỗi lần ghi **số container** (chữ, chưa nối bảng container). Một container có thể xuất hiện ở nhiều đơn | `worker/src/deliveries.js`, migration 0006 |
+| D03 Ai nhập / xác nhận | **Sale Admin, Kho, Kế toán** nhập phiếu (KL cân, ngày, số phiếu, container, xe); **Kế toán (và ADMIN)** xác nhận — theo Lưu đồ mục 14 "Kế toán cập nhật số lượng thực tế giao" | `ENTRY`, `VERIFY` |
+| D04 Chênh lệch | **Không chặn**: chi tiết đơn hiển thị KL đặt, KL đã xác nhận, KL chờ xác nhận và chênh lệch từng dòng | `src/Orders.jsx` |
+| — Phiếu sai | Phiếu **Chờ xác nhận** sửa được; hủy phải ghi lý do; phiếu đã xác nhận/đã hủy bị khóa (API + trigger) | migration 0006 |
+| — Liên quan Đơn hàng | Đơn đã có phiếu cân thì **không sửa dòng hàng**; "Thành công" cần ≥1 phiếu đã xác nhận và **không còn phiếu chờ**; không hủy đơn khi còn phiếu chưa hủy; đơn đã chốt không thêm phiếu | `worker/src/orders.js` |
+
+**Chưa làm:** quản lý container/lô/tồn kho và giá vốn theo container (D02, D05, D06, F01); trả hàng/giao thừa thiếu có xử lý tiền (D07); KPI từ số kg đã xác nhận (KPI-01).
