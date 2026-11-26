@@ -73,7 +73,9 @@ async function customerOverview(env,user,id){
  if(!c||(isSales(user)&&c.owner_email!==user.email))return bad('Không tìm thấy khách hàng',404);
  const {results:orders}=await env.DB.prepare(`SELECT o.id,o.code,o.status,o.order_type,o.expected_date,o.created_at,
   COALESCE(SUM(l.contracted_kg),0) AS total_kg,COALESCE(SUM(l.contracted_kg*l.unit_price_ex_vat),0) AS total_amount,
-  (SELECT COALESCE(SUM(d.delivered_kg),0) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id AND d.status='VERIFIED') AS delivered_kg
+  (SELECT COALESCE(SUM(d.delivered_kg),0) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id AND d.status='VERIFIED') AS delivered_kg,
+  (SELECT COALESCE(SUM(d.delivered_kg*x.unit_price_ex_vat),0) FROM deliveries d JOIN order_lines x ON x.id=d.order_line_id WHERE x.order_id=o.id AND d.status='VERIFIED') AS delivered_value${user.role==='LOGISTICS'?'':`,
+  (SELECT COALESCE(SUM(a.amount),0) FROM payment_allocations a JOIN payments p ON p.id=a.payment_id WHERE a.order_id=o.id AND p.status='ACTIVE') AS paid`}
   FROM orders o LEFT JOIN order_lines l ON l.order_id=o.id WHERE o.customer_id=?${isSales(user)?' AND o.sales_email=?':''}
   GROUP BY o.id ORDER BY o.created_at DESC LIMIT 50`).bind(id,...(isSales(user)?[user.email]:[])).all();
  const data={customer:c,orders};
@@ -127,6 +129,13 @@ async function completeActivity(env,user,id){
 export async function handleWorkspace(env,user,request,url){
  const path=url.pathname,method=request.method;
  if(path==='/api/worklist'&&method==='GET')return worklist(env,user);
+ if(path==='/api/customers/facets'&&method==='GET'){
+  // Giá trị cho bộ lọc danh sách khách hàng, trong phạm vi người dùng được xem.
+  const own=isSales(user)?' AND owner_email=?':'',b=isSales(user)?[user.email]:[];
+  const {results:regions}=await env.DB.prepare(`SELECT region,COUNT(*) AS n FROM customers WHERE region IS NOT NULL AND trim(region)<>''${own} GROUP BY region ORDER BY region`).bind(...b).all();
+  const {results:owners}=isSales(user)?{results:[]}:await env.DB.prepare(`SELECT c.owner_email AS email,COALESCE(u.full_name,c.owner_email) AS name,COUNT(*) AS n FROM customers c LEFT JOIN app_users u ON u.email=c.owner_email WHERE c.owner_email IS NOT NULL GROUP BY c.owner_email ORDER BY name`).all();
+  return response({ok:true,data:{regions,owners}});
+ }
  const ov=path.match(/^\/api\/customers\/([a-zA-Z0-9-]{1,100})\/overview$/);
  if(ov&&method==='GET')return customerOverview(env,user,ov[1]);
  if(path==='/api/activities'&&method==='POST'){if(!ACTIVITY_ROLES.includes(user.role))return bad('Không có quyền truy cập phân hệ',403);return createActivity(env,user,request)}

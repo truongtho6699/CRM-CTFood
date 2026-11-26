@@ -1,6 +1,6 @@
 // LOG-01 — Giao hàng & phiếu cân (giả định tạm theo tab "Lưu đồ", chờ BGĐ chốt D01, D03, D04).
 // Sale Admin / Kho / Kế toán nhập phiếu; Kế toán xác nhận số kg thực giao (Lưu đồ mục 14 — căn cứ KPI sau này).
-import {response,bad,fail,trimText,readJson} from './http.js';
+import {response,bad,fail,trimText,readJson,likeFolded} from './http.js';
 
 export const DELIVERY_STATUS={PENDING:'Chờ xác nhận',VERIFIED:'Đã xác nhận',CANCELLED:'Đã hủy'};
 const READ=['ADMIN','BOD','ACCOUNTING','SALES_MANAGER','SALES','SALES_ADMIN','LOGISTICS'];
@@ -53,7 +53,7 @@ async function list(env,user,params){
  const st=trimText(params.get('status'),20).toUpperCase();
  if(st){if(!Object.hasOwn(DELIVERY_STATUS,st))return bad('Trạng thái lọc không hợp lệ',400);where.push('d.status=?');bind.push(st)}
  const q=trimText(params.get('q'),80);
- if(q){const like='%'+q.replace(/[\\%_]/g,c=>'\\'+c)+'%';where.push("(o.code LIKE ? ESCAPE '\\' OR c.name LIKE ? ESCAPE '\\' OR d.weigh_ticket_no LIKE ? ESCAPE '\\' OR d.container_no LIKE ? ESCAPE '\\')");bind.push(like,like,like,like)}
+ if(q){const like=likeFolded(q);where.push("(lower(o.code) LIKE ? ESCAPE '\\' OR c.search_key LIKE ? ESCAPE '\\' OR lower(d.weigh_ticket_no) LIKE ? ESCAPE '\\' OR lower(d.container_no) LIKE ? ESCAPE '\\')");bind.push(like,like,like,like)}
  const limit=Math.max(1,Math.min(100,Number(params.get('limit'))||25));
  const offset=Math.max(0,Math.min(10000,Number(params.get('offset'))||0));
  const {results}=await env.DB.prepare(SELECT+(where.length?' WHERE '+where.join(' AND '):'')+' ORDER BY d.delivery_date DESC,d.created_at DESC LIMIT ? OFFSET ?').bind(...bind,limit+1,offset).all();

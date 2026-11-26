@@ -15,3 +15,6 @@ export async function readJson(request){
  if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Object.assign(new Error('Dữ liệu không hợp lệ'),{status:400});
  return payload;
 }
+// Bỏ dấu tiếng Việt + viết thường, khớp với cột search_key (migration 0008): "SƯỜN Non" → "suon non".
+export function foldText(s){return String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[đĐ]/g,'d').toLowerCase()}
+export function likeFolded(q){return '%'+foldText(q).replace(/[\\%_]/g,c=>'\\'+c)+'%'}

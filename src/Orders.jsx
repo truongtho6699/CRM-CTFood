@@ -1,7 +1,7 @@
 // ORDER-01 — Phân hệ Đơn hàng (thử nghiệm; quy tắc tạm theo docs/PROJECT_STATUS.md mục 8).
 import React,{useEffect,useId,useState} from 'react';
 import {Plus,RefreshCcw,Search,X,Trash2,AlertTriangle,Database,ChevronLeft,ChevronRight,CheckCircle2,Ban,Pencil} from 'lucide-react';
-import {Status,Notice,jsonFetch,TrialNote,Combobox,searchCustomers,searchProducts} from './ui.jsx';
+import {Status,Notice,jsonFetch,TrialNote,Combobox,searchCustomers,searchProducts,OrderProgress,MiniProgress} from './ui.jsx';
 import {OrderDeliveries} from './Deliveries.jsx';
 
 const STATUS={PENDING:'Chờ giao',SUCCESS:'Thành công',CANCELLED:'Hủy'};
@@ -106,6 +106,7 @@ export function OrderDetail({id,user,onClose,onEdit,onChanged}){
    <div className="ct-modal-title"><div><h2 id={heading}>{order?.code||'Đang tải...'}</h2></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onClose} aria-label="Đóng"><X size={20}/></button></div>
    {error&&<Notice type="error">{error}</Notice>}
    {order&&<>
+    <OrderProgress order={order}/>
     <div className="ct-detail-grid">
      {[['Khách hàng',order.customer_name],['Trạng thái',<Status value={STATUS[order.status]||order.status}/>],['Loại đơn',TYPE[order.order_type]||order.order_type],['Sales phụ trách',order.sales_name||order.sales_email],
        ['Giao dự kiến',day(order.expected_date)],['Địa điểm giao',order.delivery_address||'—'],['Cọc dự kiến',vnd(order.deposit_expected)+' đ'],['Số container dự kiến',order.container_count||'—'],
@@ -162,9 +163,9 @@ export function OrdersPage({user}){
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải đơn hàng</strong><p>{error}</p><button className="ct-btn secondary" onClick={reload}>Thử lại</button></div>
    :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2,3].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :rows.length===0?<div className="ct-empty"><Database size={32}/><strong>{query||status?'Không có đơn phù hợp':'Chưa có đơn hàng'}</strong><p>{canWrite&&!query&&!status?'Bấm "Tạo đơn" để tạo đơn đầu tiên.':''}</p></div>
-   :<><div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th className="ct-sm-hide">Loại</th><th className="ct-sm-hide">Giao dự kiến</th><th className="ct-num">KL (kg)</th><th className="ct-num">Giá trị chưa VAT (đ)</th><th className="ct-num">Đã giao (kg)</th><th className="ct-sm-hide">Sales</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+   :<><div className="ct-tablebox"><table className="ct-data-table ct-compact"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th className="ct-sm-hide">Loại</th><th className="ct-sm-hide">Giao dự kiến</th><th className="ct-num">KL (kg)</th><th className="ct-num">Giá trị chưa VAT (đ)</th><th>Tiến trình</th><th className="ct-sm-hide">Sales</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
     <tbody>{rows.map(o=><tr key={o.id} className="ct-row-link" tabIndex={0} onClick={e=>{if(!e.target.closest('button'))setDetail(o.id)}} onKeyDown={e=>{if(e.key==='Enter'&&e.target===e.currentTarget)setDetail(o.id)}}><td data-label="Mã đơn" className="c-sub"><span className="ct-id">{o.code}</span></td><td data-label="Khách hàng" className="c-title">{o.customer_name}</td><td data-label="Loại" className="ct-sm-hide">{o.order_type==='OFFER'?'Offer':'Sẵn kho'}</td><td data-label="Giao dự kiến" className="ct-sm-hide">{day(o.expected_date)}</td>
-     <td data-label="KL (kg)" className="ct-num ct-sm-hide">{kg(o.total_kg)}</td><td data-label="Giá trị" className="ct-num c-value">{vnd(o.total_amount)}</td><td data-label="Đã giao" className="ct-num ct-sm-hide">{o.delivered_kg?kg(o.delivered_kg):'—'}{o.pending_tickets?<span className="ct-pending-dot" title={o.pending_tickets+' phiếu chờ xác nhận'}> •{o.pending_tickets}</span>:''}</td><td data-label="Sales" className="ct-sm-hide">{o.sales_name||o.sales_email}</td><td data-label="Trạng thái" className="c-badge"><Status value={STATUS[o.status]||o.status}/></td>
+     <td data-label="KL (kg)" className="ct-num ct-sm-hide">{kg(o.total_kg)}</td><td data-label="Giá trị" className="ct-num c-value">{vnd(o.total_amount)}</td><td data-label="Tiến trình" className="c-progress"><MiniProgress order={o}/></td><td data-label="Sales" className="ct-sm-hide">{o.sales_name||o.sales_email}</td><td data-label="Trạng thái" className="c-badge"><Status value={STATUS[o.status]||o.status}/></td>
      <td data-label="Thao tác" className="c-action"><button className="ct-text-button" onClick={()=>setDetail(o.id)}>Xem</button></td></tr>)}</tbody></table></div>
     <div className="ct-pagination"><span>Dòng {page*PAGE+1}–{page*PAGE+rows.length}{hasMore?', còn trang sau':''}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={17}/></button></div></div></>}
   {detail&&form===undefined&&<OrderDetail id={detail} user={user} onClose={()=>setDetail(null)} onEdit={o=>setForm(o)} onChanged={reload}/>}

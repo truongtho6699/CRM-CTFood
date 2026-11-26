@@ -110,3 +110,32 @@ a.ct-btn{text-decoration:none}
 @media(max-width:760px){.ct-task-grid{grid-template-columns:1fr}.ct-task-count strong{font-size:24px}}
 .ct-task{min-width:0;overflow:hidden}.ct-task header{flex-wrap:wrap}.ct-task li span:last-child{flex-shrink:0;max-width:55%;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:760px){.ct-task-grid{grid-template-columns:minmax(0,1fr)}.ct-dashboard-title{flex-wrap:wrap}}
+/* Tiến trình Đặt → Giao → Thu (bước 3 UI/UX) */
+.ct-progress{display:flex;align-items:center;gap:10px;margin:4px 0 16px;padding:12px 14px;border:1px solid #e3eaec;border-radius:10px;background:#f8fafb}
+.ct-progress.cancelled{opacity:.55}
+.ct-step{display:flex;align-items:flex-start;gap:8px;flex:0 0 auto;min-width:0}
+.ct-step strong{display:block;font-size:14px;color:#173443}.ct-step small{display:block;font-size:12px;color:#5b7480;font-variant-numeric:tabular-nums}
+.ct-step-dot{width:14px;height:14px;margin-top:2px;border-radius:50%;border:2px solid #b7c7cd;background:#fff;flex:0 0 auto}
+.ct-step.part .ct-step-dot{border-color:#0b6f5b;background:linear-gradient(90deg,#0b6f5b 50%,#fff 50%)}
+.ct-step.done .ct-step-dot{border-color:#0b6f5b;background:#0b6f5b}
+.ct-step-bar{flex:1 1 40px;min-width:24px;height:4px;border-radius:2px;background:#dbe5e9;overflow:hidden}.ct-step-bar i{display:block;height:100%;background:#0b6f5b}
+.ct-minis{display:inline-flex;flex-direction:column;gap:3px;min-width:96px}
+.ct-mini{display:flex;align-items:center;gap:6px;font-size:12px;color:#4f6a75;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ct-mini-track{width:44px;height:4px;border-radius:2px;background:#dbe5e9;overflow:hidden;flex:0 0 auto}.ct-mini-track i{display:block;height:100%;background:#0b6f5b}
+.ct-item-side .ct-minis{align-items:flex-end}
+@media(max-width:760px){
+ .ct-progress{flex-direction:column;align-items:stretch;gap:6px}
+ .ct-step-bar{display:none}
+ .ct-compact td.c-progress{grid-row:3;grid-column:1/-1}
+ .ct-compact td.c-progress .ct-minis{flex-direction:row;gap:14px}
+}
+/* Bộ lọc danh sách khách hàng */
+.ct-filterbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 12px}
+.ct-filterbar select{height:36px;border:1px solid #dbe5e9;border-radius:8px;padding:0 10px;background:#fff;font:inherit;font-size:14px;color:#173443;max-width:220px}
+.ct-seg{display:inline-flex;border:1px solid #dbe5e9;border-radius:8px;overflow:hidden}
+.ct-seg button{border:0;background:#fff;padding:0 12px;height:34px;font:inherit;font-size:14px;color:#4f6a75;cursor:pointer}
+.ct-seg button+button{border-left:1px solid #dbe5e9}
+.ct-seg button[aria-pressed="true"]{background:#173443;color:#fff}
+.ct-seg button:focus-visible,.ct-filterbar select:focus-visible{outline:3px solid #1689b6;outline-offset:1px}
+.ct-filterbar .ct-linkbtn{border:0;background:none;color:#0b6f5b;font:inherit;font-size:14px;cursor:pointer;text-decoration:underline}
+@media(max-width:760px){.ct-filterbar select{flex:1 1 140px;max-width:none}.ct-seg{width:100%}.ct-seg button{flex:1;padding:0 6px}}
