@@ -132,7 +132,9 @@ export function PaymentsPage({user}){
   const q=tab==='receivables'?'/api/receivables?q='+encodeURIComponent(query)+(filter==='open'?'&open=1':filter==='overdue'?'&overdue=1':''):'/api/payments?limit='+PAGE+'&offset='+page*PAGE+'&q='+encodeURIComponent(query);
   jsonFetch(q).then(r=>{if(!live)return;if(tab==='receivables')setRecv(r);else{setRows(r.data);setHasMore(r.pagination.hasMore)}}).catch(e=>{if(live)setError(e.message)}).finally(()=>{if(live)setLoading(false)});
   return()=>{live=false}},[tab,filter,query,page,seq]);
- useEffect(()=>{if(tab==='payments'&&!recv)jsonFetch('/api/receivables').then(setRecv).catch(()=>{})},[tab]);
+ // Thẻ tổng quan luôn lấy từ /api/receivables; ở tab Phiếu thu cũng làm mới sau mỗi thay đổi.
+ const refreshTotals=()=>jsonFetch('/api/receivables').then(r=>setRecv(old=>tab==='receivables'&&old?{...old,totals:r.totals,credits:r.credits}:r)).catch(()=>{});
+ useEffect(()=>{if(tab==='payments'&&!recv)refreshTotals()},[tab]);
  const reload=()=>setSeq(x=>x+1);
  const t=recv?.totals;
  return <section className="ct-workspace">
@@ -147,7 +149,7 @@ export function PaymentsPage({user}){
    <label className="ct-search"><Search size={18}/><span className="sr-only">Tìm</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={tab==='receivables'?'Tìm mã đơn hoặc khách hàng...':'Tìm khách hàng hoặc số chứng từ...'} aria-label="Tìm"/></label>
   </div>
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải dữ liệu</strong><p>{error}</p><button className="ct-btn secondary" onClick={reload}>Thử lại</button></div>
-   :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
+   :loading||(tab==='receivables'&&!recv?.data)?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :tab==='receivables'?(recv.data.length===0?<div className="ct-empty"><Database size={32}/><strong>Không có công nợ phù hợp</strong></div>
     :<div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Sales</th><th className="ct-num">Giá trị đã giao (đ)</th><th className="ct-num">Đã thu (đ)</th><th className="ct-num">Còn lại (đ)</th><th>Hạn thanh toán</th><th>Tình trạng</th></tr></thead>
      <tbody>{recv.data.map(r=><tr key={r.order_id}><td data-label="Mã đơn"><span className="ct-id">{r.code}</span></td><td data-label="Khách hàng">{r.customer_name}</td><td data-label="Sales">{r.sales_name||r.sales_email}</td><td data-label="Đã giao" className="ct-num">{vnd(r.delivered_value)}</td><td data-label="Đã thu" className="ct-num">{vnd(r.paid)}</td>
@@ -157,8 +159,8 @@ export function PaymentsPage({user}){
    :<><div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th>Ngày thu</th><th>Khách hàng</th><th>Loại</th><th>Hình thức</th><th className="ct-num">Số tiền (đ)</th><th className="ct-num">Đã phân bổ (đ)</th><th>Chứng từ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
     <tbody>{rows.map(p=><tr key={p.id}><td data-label="Ngày thu">{day(p.payment_date)}</td><td data-label="Khách hàng">{p.customer_name}</td><td data-label="Loại">{TYPE[p.payment_type]}</td><td data-label="Hình thức">{METHOD[p.method]||p.method}</td><td data-label="Số tiền" className="ct-num">{vnd(p.amount)}</td><td data-label="Đã phân bổ" className="ct-num">{vnd(p.allocated)}</td><td data-label="Chứng từ">{p.reference||'—'}</td><td data-label="Trạng thái"><Status value={p.status==='VOID'?'Đã hủy':'Hiệu lực'}/></td><td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setDetail(p.id)}>Xem</button></td></tr>)}</tbody></table></div>
     <div className="ct-pagination"><span>Hiển thị {page*PAGE+1}–{page*PAGE+rows.length}{hasMore?' · còn dữ liệu':' · hết danh sách'}</span><div><button className="ct-btn secondary" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={17}/> Trước</button><button className="ct-btn secondary" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Sau <ChevronRight size={17}/></button></div></div></>}
-  {form&&<PaymentForm onCancel={()=>setForm(false)} onSaved={d=>{setForm(false);setFlash('Đã lập phiếu thu.');setTab('payments');setDetail(d.id);setRecv(null);reload()}}/>}
-  {detail&&<PaymentDetail id={detail} user={user} onClose={()=>setDetail(null)} onChanged={()=>{setRecv(null);reload()}}/>}
+  {form&&<PaymentForm onCancel={()=>setForm(false)} onSaved={d=>{setForm(false);setFlash('Đã lập phiếu thu.');setTab('payments');setDetail(d.id);refreshTotals();reload()}}/>}
+  {detail&&<PaymentDetail id={detail} user={user} onClose={()=>setDetail(null)} onChanged={()=>{refreshTotals();reload()}}/>}
  </section>;
 }
 
