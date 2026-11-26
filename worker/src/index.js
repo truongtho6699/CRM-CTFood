@@ -195,6 +195,8 @@ async function saveEntity(env,user,entity,request,method,id){
  let stmt;
  if(entity==='customers'){
   const owner=method==='PATCH'?old.owner_email:user.email;
+  // Thời hạn công nợ chỉ tài khoản nhóm tài chính được thay đổi.
+  if(!financeUser(user))v.credit_days=method==='PATCH'?old.credit_days:0;
   stmt=method==='POST'
    ?env.DB.prepare('INSERT INTO customers(id,name,tax_code,phone,region,address,owner_email,status,updated_at,email,credit_days,legacy_code,partner_type,contact_name,contact_phone,source_sales_name) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(entityId,v.name,v.tax_code,v.phone,v.region,v.address,owner,v.status,now,v.email,v.credit_days,v.legacy_code,v.partner_type,v.contact_name,v.contact_phone,v.source_sales_name)
    :env.DB.prepare('UPDATE customers SET name=?,tax_code=?,phone=?,region=?,address=?,status=?,updated_at=?,email=?,credit_days=?,legacy_code=?,partner_type=?,contact_name=?,contact_phone=?,source_sales_name=? WHERE id=? AND updated_at=?').bind(v.name,v.tax_code,v.phone,v.region,v.address,v.status,now,v.email,v.credit_days,v.legacy_code,v.partner_type,v.contact_name,v.contact_phone,v.source_sales_name,entityId,expected);
