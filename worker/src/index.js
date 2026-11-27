@@ -5,6 +5,7 @@ import {handleDeliveries} from './deliveries.js';
 import {handleFinance} from './finance.js';
 import {handleWorkspace} from './workspace.js';
 import {handleImports} from './imports.js';
+import {sessionUser,handlePublicAuth,handleUserAuth,mustChangeBlocks,googleToSession,adminSetLogin} from './auth.js';
 
 function assertConfig(env){if(!env.DB||!env.CF_ACCESS_TEAM_DOMAIN||!env.CF_ACCESS_AUD)throw new Error('API chưa được cấu hình D1 / Cloudflare Access')}
 // Cache JWKS per issuer across requests in the same isolate (jose handles key rotation/cooldown).
@@ -14,9 +15,15 @@ function remoteKeys(issuer){
  if(!jwks){jwks=createRemoteJWKSet(new URL(issuer+'/cdn-cgi/access/certs'));jwksCache.set(issuer,jwks)}
  return jwks;
 }
+// Thứ tự: phiên CRM (cookie, cả mật khẩu và Google) → JWT Cloudflare Access (bản xem trước, hoặc trước khi đổi cấu hình Access).
 async function identity(request,env,getKeys){
+ const s=await sessionUser(request,env);
+ if(s)return s;
+ return accessIdentity(request,env,getKeys);
+}
+async function accessIdentity(request,env,getKeys){
  const jwt=request.headers.get('Cf-Access-Jwt-Assertion');
- if(!jwt)throw Object.assign(new Error('Yêu cầu đăng nhập qua Cloudflare Access'),{status:401});
+ if(!jwt)throw Object.assign(new Error('Vui lòng đăng nhập'),{status:401});
  const host=String(env.CF_ACCESS_TEAM_DOMAIN).replace(/^https?:\/\//,'').replace(/\/$/,'');
  if(!/^([a-z\d-]+\.)+cloudflareaccess\.com$/i.test(host))throw new Error('Cloudflare Access team domain không hợp lệ');
  const issuer='https://'+host;
@@ -25,9 +32,9 @@ async function identity(request,env,getKeys){
  catch{throw Object.assign(new Error('Phiên Cloudflare Access không hợp lệ hoặc đã hết hạn'),{status:401})}
  const email=typeof payload.email==='string'?payload.email.toLowerCase():null;
  if(!email)throw Object.assign(new Error('Cloudflare Access JWT thiếu email'),{status:401});
- const user=await env.DB.prepare('SELECT email,full_name,role,active FROM app_users WHERE email=?').bind(email).first();
+ const user=await env.DB.prepare('SELECT email,full_name,role,active,username,(password_hash IS NOT NULL) AS has_password FROM app_users WHERE email=?').bind(email).first();
  if(!user||!user.active)throw Object.assign(new Error('Tài khoản chưa được cấp quyền truy cập CRM'),{status:403});
- return user;
+ return {...user,auth_method:'ACCESS'};
 }
 function financeUser(user){return ['ADMIN','BOD','ACCOUNTING'].includes(user.role)}
 function salesFilter(user){return user.role==='SALES'}
@@ -240,7 +247,7 @@ const CONFLICT='Tài khoản vừa được quản trị viên khác cập nhậ
 function requireAdmin(user){if(user.role!=='ADMIN')throw Object.assign(new Error('Chỉ quản trị hệ thống được quản lý người dùng'),{status:403})}
 async function listUsers(env,user){
  requireAdmin(user);
- const {results}=await env.DB.prepare('SELECT email,full_name,role,active,created_at,updated_at FROM app_users ORDER BY active DESC,role,email').all();
+ const {results}=await env.DB.prepare("SELECT email,full_name,role,active,created_at,updated_at,username,(password_hash IS NOT NULL) AS has_password,must_change_password,(locked_until IS NOT NULL AND locked_until>strftime('%Y-%m-%dT%H:%M:%fZ','now')) AS locked FROM app_users ORDER BY active DESC,role,email").all();
  return response({ok:true,data:results||[]});
 }
 function validatedUser(payload){
@@ -294,12 +301,24 @@ export function createWorker({getKeys=remoteKeys}={}){return{
  async fetch(request,env){
   const url=new URL(request.url);
   if(url.pathname==='/health'&&request.method==='GET')return response({ok:true,service:'ctfood-crm-api',mode:'preproduction'});
+  if(url.pathname==='/auth/google'&&request.method==='GET'){
+   // Đường dẫn này do Cloudflare Access (Google) bảo vệ; đổi JWT thành phiên CRM.
+   try{assertConfig(env);return await googleToSession(env,request,await accessIdentity(request,env,getKeys))}
+   catch(error){const st=Number(error?.status)||500;return new Response(null,{status:302,headers:{Location:'/login?e='+(st===403?'google_denied':'google_failed'),'Cache-Control':'no-store'}})}
+  }
   if(!url.pathname.startsWith('/api/'))return bad('Không tìm thấy đường dẫn',404);
   if(request.method==='OPTIONS')return bad('CORS không cho phép',405);
   try{
    assertConfig(env);
+   const pub=await handlePublicAuth(env,request,url);
+   if(pub)return pub;
+   // Chống CSRF: mọi yêu cầu ghi phải đến từ chính trang CRM (cookie phiên còn có SameSite=Lax).
+   if(!['GET','HEAD'].includes(request.method)&&request.headers.get('Origin')!==url.origin)return bad('Nguồn yêu cầu không hợp lệ',403);
    const user=await identity(request,env,getKeys);
-   if(request.method==='GET'&&url.pathname==='/api/me')return response({ok:true,user});
+   if(mustChangeBlocks(user,url))return bad('Bạn cần đổi mật khẩu tạm trước khi tiếp tục',403);
+   if(request.method==='GET'&&url.pathname==='/api/me'){const {session_hash,...me}=user;return response({ok:true,user:me})}
+   const authRes=await handleUserAuth(env,request,url,user);
+   if(authRes)return authRes;
    if(request.method==='GET'&&url.pathname==='/api/summary'){
     const mine=user.role==='SALES';
     const canLeads=access.leads.includes(user.role);
@@ -322,6 +341,12 @@ export function createWorker({getKeys=remoteKeys}={}){return{
    if(deliveries)return deliveries;
    const finance=await handleFinance(env,user,request,url);
    if(finance)return finance;
+   const lm=url.pathname.match(/^\/api\/users\/([^/]+)\/login$/);
+   if(lm){
+    if(request.method!=='POST')return bad('Phương thức không hỗ trợ',405);
+    let email;try{email=decodeURIComponent(lm[1]).toLowerCase()}catch{return bad('Email không hợp lệ',400)}
+    return await adminSetLogin(env,request,user,email);
+   }
    const um=url.pathname.match(/^\/api\/users(?:\/([^/]+))?$/);
    if(um){
     if(request.method==='GET'&&!um[1])return await listUsers(env,user);

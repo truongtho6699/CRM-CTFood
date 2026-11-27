@@ -244,6 +244,41 @@ function UserModal({initial,self,onCancel,onSave}){
   </section>
  </div>;
 }
+// Cấp tên đăng nhập và mật khẩu tạm (người dùng phải đổi ở lần đăng nhập đầu), mở khóa, hoặc bỏ mật khẩu.
+function makeTempPassword(){const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ',d='23456789',all=a+d,r=crypto.getRandomValues(new Uint32Array(12));let s=a[r[0]%a.length]+d[r[1]%d.length];for(let i=2;i<12;i++)s+=all[r[i]%all.length];return s}
+function LoginModal({user,onCancel,onDone}){
+ const suggest=user.username||(user.email.split('@')[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9._-]/g,'').slice(0,32));
+ const [username,setUsername]=useState(suggest);
+ const [password,setPassword]=useState(()=>user.has_password?'':makeTempPassword());
+ const [busy,setBusy]=useState(false);
+ const [error,setError]=useState('');
+ const heading=useId();
+ useEffect(()=>{const onKey=e=>{if(e.key==='Escape'&&!busy)onCancel()};document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey)},[busy,onCancel]);
+ const send=async(body,msg)=>{
+  setBusy(true);setError('');
+  try{await jsonFetch('/api/users/'+encodeURIComponent(user.email)+'/login',{method:'POST',body:JSON.stringify(body)});onDone(msg)}
+  catch(e){setError(e.message);setBusy(false)}
+ };
+ const submit=e=>{e.preventDefault();send({username,password:password||undefined},password?`Đã cấp cho ${user.full_name}: tên đăng nhập "${username}", mật khẩu tạm "${password}". Hãy gửi riêng cho người dùng; họ sẽ phải đổi ở lần đăng nhập đầu.`:`Đã lưu tên đăng nhập "${username}" cho ${user.full_name}.`)};
+ return <div className="backdrop ct-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onCancel()}}>
+  <section className="modal ct-modal" role="dialog" aria-modal="true" aria-labelledby={heading}>
+   <div className="ct-modal-title"><div><h2 id={heading}>Đăng nhập bằng mật khẩu</h2><p className="ct-muted">{user.full_name} · {user.email}</p></div><button className="ct-icon-button" type="button" disabled={busy} onClick={onCancel} aria-label="Đóng"><X size={20}/></button></div>
+   <form onSubmit={submit}>
+    <div className="formgrid ct-formgrid ct-pw-form">
+     <label>Tên đăng nhập<span className="ct-required"> *</span><input required disabled={busy} value={username} maxLength={32} autoComplete="off" spellCheck={false} onChange={e=>setUsername(e.target.value.toLowerCase())} placeholder="vd: nv.an"/><small className="ct-hint">3–32 ký tự: chữ thường không dấu, số, dấu chấm, gạch dưới, gạch ngang.</small></label>
+     <label>{user.has_password?'Mật khẩu tạm mới (để trống nếu không đổi)':'Mật khẩu tạm'}<div className="ct-inline-input"><input disabled={busy} value={password} maxLength={128} autoComplete="new-password" spellCheck={false} onChange={e=>setPassword(e.target.value)}/><button type="button" className="ct-btn secondary" disabled={busy} onClick={()=>setPassword(makeTempPassword())}><RefreshCcw size={16}/> Tạo mới</button></div><small className="ct-hint">Người dùng phải đổi mật khẩu này ở lần đăng nhập đầu. Đặt mật khẩu mới sẽ đăng xuất các phiên mật khẩu cũ.</small></label>
+    </div>
+    {error&&<Notice type="error">{error}</Notice>}
+    <div className="ct-modal-actions">
+     {user.locked?<button type="button" className="ct-btn secondary" disabled={busy} onClick={()=>send({unlock:true},'Đã mở khóa tài khoản '+user.full_name+'.')}>Mở khóa</button>:null}
+     {user.has_password?<button type="button" className="ct-btn secondary" disabled={busy} onClick={()=>send({remove_password:true},'Đã bỏ mật khẩu của '+user.full_name+'; người này chỉ còn đăng nhập được bằng Google.')}>Bỏ mật khẩu</button>:null}
+     <button type="button" className="ct-btn secondary" disabled={busy} onClick={onCancel}>Hủy</button>
+     <button className="ct-btn primary" disabled={busy}><KeyRound size={17}/> {busy?'Đang lưu...':'Lưu'}</button>
+    </div>
+   </form>
+  </section>
+ </div>;
+}
 function UsersAdmin({self}){
  const [rows,setRows]=useState([]);
  const [loading,setLoading]=useState(true);
@@ -251,6 +286,7 @@ function UsersAdmin({self}){
  const [flash,setFlash]=useState('');
  const [editing,setEditing]=useState(undefined);
  const [query,setQuery]=useState('');
+ const [loginFor,setLoginFor]=useState(null);
  const load=async()=>{
   setLoading(true);setError('');
   try{setRows((await jsonFetch('/api/users')).data)}catch(e){setRows([]);setError(e.message)}
@@ -272,23 +308,32 @@ function UsersAdmin({self}){
   <div className="ct-section-head"><div><h2>Quản lý tài khoản</h2><p>Tài khoản được phép dùng CRM và vai trò quyết định dữ liệu mỗi người được xem/sửa.</p></div>
    <div className="ct-actions"><button className="ct-btn secondary" disabled={loading} onClick={load}><RefreshCcw size={17}/> Làm mới</button><button className="ct-btn primary" onClick={()=>setEditing(null)}><Plus size={17}/> Thêm tài khoản</button></div>
   </div>
-  <Notice>Đăng nhập cần đủ 2 lớp: email nằm trong chính sách <strong>Cloudflare Access</strong> và tài khoản <strong>đang hoạt động</strong> ở đây. Khóa tài khoản tại đây có hiệu lực ngay với mọi API.</Notice>
+  <Notice>Có 2 cách đăng nhập: <strong>Google</strong> (email phải nằm trong chính sách Cloudflare Access) hoặc <strong>tên đăng nhập và mật khẩu</strong> do bạn cấp bằng nút "Mật khẩu". Khóa tài khoản tại đây có hiệu lực ngay, kể cả với phiên đang mở.</Notice>
   {flash&&<Notice type="success">{flash}</Notice>}
   <div className="ct-toolbar"><label className="ct-search"><Search size={18}/><span className="sr-only">Tìm người dùng</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm theo email, họ tên hoặc vai trò..." aria-label="Tìm người dùng"/></label><span className="ct-toolbar-counter">{rows.filter(r=>r.active).length} đang hoạt động trên {rows.length} tài khoản</span></div>
   {error?<div className="ct-empty"><AlertTriangle size={30}/><strong>Không thể tải danh sách</strong><p>{error}</p><button className="ct-btn secondary" onClick={load}>Thử lại</button></div>
    :loading?<div className="ct-loading" role="status" aria-live="polite">{[0,1,2].map(i=><div className="ct-skeleton" key={i}/>)}</div>
    :shown.length===0?<div className="ct-empty"><Database size={32}/><strong>Không tìm thấy tài khoản</strong></div>
-   :<div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th scope="col">Email</th><th scope="col">Họ tên</th><th scope="col">Vai trò</th><th scope="col">Trạng thái</th><th scope="col">Cập nhật</th><th scope="col">Thao tác</th></tr></thead>
-    <tbody>{shown.map(r=><tr key={r.email}><td data-label="Email">{r.email}{r.email===self&&<span className="ct-you"> (bạn)</span>}</td><td data-label="Họ tên">{r.full_name}</td><td data-label="Vai trò">{ROLE_LABEL[r.role]||r.role}</td><td data-label="Trạng thái"><Status value={r.active?'Đang hoạt động':'Đã khóa'}/></td><td data-label="Cập nhật">{fmt(r.updated_at)}</td><td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setEditing(r)}>Sửa</button></td></tr>)}</tbody></table></div>}
+   :<div className="ct-tablebox"><table className="ct-data-table"><thead><tr><th scope="col">Email</th><th scope="col">Họ tên</th><th scope="col">Vai trò</th><th scope="col">Đăng nhập</th><th scope="col">Trạng thái</th><th scope="col">Cập nhật</th><th scope="col">Thao tác</th></tr></thead>
+    <tbody>{shown.map(r=><tr key={r.email}><td data-label="Email">{r.email}{r.email===self&&<span className="ct-you"> (bạn)</span>}</td><td data-label="Họ tên">{r.full_name}</td><td data-label="Vai trò">{ROLE_LABEL[r.role]||r.role}</td><td data-label="Đăng nhập">{r.username?<><strong className="ct-username">{r.username}</strong><span className="ct-muted">{r.has_password?' · Google và mật khẩu':' · chưa có mật khẩu'}</span></>:<span className="ct-muted">Chỉ Google</span>}{r.locked?<span className="ct-tag bad">Tạm khóa</span>:null}{r.has_password&&r.must_change_password?<span className="ct-tag">Chờ đổi mật khẩu</span>:null}</td><td data-label="Trạng thái"><Status value={r.active?'Đang hoạt động':'Đã khóa'}/></td><td data-label="Cập nhật">{fmt(r.updated_at)}</td><td data-label="Thao tác"><button className="ct-text-button" onClick={()=>setEditing(r)}>Sửa</button> <button className="ct-text-button" onClick={()=>setLoginFor(r)}>Mật khẩu</button></td></tr>)}</tbody></table></div>}
   {editing!==undefined&&<UserModal initial={editing} self={self} onCancel={()=>setEditing(undefined)} onSave={save}/>}
+  {loginFor&&<LoginModal user={loginFor} onCancel={()=>setLoginFor(null)} onDone={msg=>{setLoginFor(null);setFlash(msg);load()}}/>}
  </section>;
 }
-const LOGOUT_URL='/cdn-cgi/access/logout?returnTo='+encodeURIComponent('https://crm-ctfood.pages.dev/login');
+// Đăng xuất: xóa phiên CRM; nếu vào bằng Google thì thoát luôn phiên Cloudflare Access.
+const ACCESS_LOGOUT='/cdn-cgi/access/logout?returnTo='+encodeURIComponent(window.location.origin+'/login');
+async function logout(){
+ let google=true;
+ try{const r=await jsonFetch('/api/auth/logout',{method:'POST',body:'{}'});google=r.google}catch{}
+ window.location.href=google?ACCESS_LOGOUT:'/login';
+}
+const METHOD_LABEL={PASSWORD:'Tên đăng nhập và mật khẩu',GOOGLE:'Tài khoản Google',ACCESS:'Tài khoản Google'};
+function LogoutButton(){return <button type="button" className="ct-btn secondary" onClick={logout}><LogOut size={17}/> Đăng xuất</button>}
 function AccountProfile({user}){
- const rows=[['Họ tên',user.full_name||'—'],['Email đăng nhập',user.email],['Vai trò',ROLE_LABEL[user.role]||user.role],['Trạng thái',<Status value={user.active?'Đang hoạt động':'Đã khóa'}/>],['Phương thức đăng nhập','Tài khoản Google']];
+ const rows=[['Họ tên',user.full_name||'—'],['Email đăng nhập',user.email],['Vai trò',ROLE_LABEL[user.role]||user.role],['Tên đăng nhập',user.username||'Chưa cấp (chỉ dùng Google)'],['Trạng thái',<Status value={user.active?'Đang hoạt động':'Đã khóa'}/>],['Đang đăng nhập bằng',METHOD_LABEL[user.auth_method]||'—']];
  return <section className="ct-workspace">
   <div className="ct-section-head"><div><h2>Thông tin tài khoản</h2><p>Thông tin do quản trị viên cấp trong CRM. Muốn đổi họ tên hoặc vai trò, liên hệ quản trị viên.</p></div>
-   <div className="ct-actions"><a className="ct-btn secondary" href={LOGOUT_URL}><LogOut size={17}/> Đăng xuất</a></div></div>
+   <div className="ct-actions"><LogoutButton/></div></div>
   <div className="ct-dashboard-grid">
    <section className="ct-panel"><div className="ct-panel-title"><div><h3>Hồ sơ</h3><p>Do quản trị viên cấp</p></div><CircleUser size={22}/></div>
     <div className="ct-status-list">{rows.map(([k,v])=><div key={k}><span>{k}</span><strong>{v}</strong></div>)}</div></section>
@@ -297,19 +342,38 @@ function AccountProfile({user}){
   </div>
  </section>;
 }
-function AccountPassword(){
- const link=(href,label)=><a className="ct-btn primary" href={href} target="_blank" rel="noopener noreferrer"><ExternalLink size={17}/> {label}</a>;
+function AccountPassword({user,forced=false,onChanged}){
+ const [form,setForm]=useState({current:'',next:'',again:''});
+ const [show,setShow]=useState(false);
+ const [busy,setBusy]=useState(false);
+ const [error,setError]=useState('');
+ const [done,setDone]=useState(false);
+ const set=k=>e=>setForm(f=>({...f,[k]:e.target.value}));
+ const submit=async e=>{
+  e.preventDefault();setError('');
+  if(form.next!==form.again){setError('Hai lần nhập mật khẩu mới không giống nhau');return}
+  setBusy(true);
+  try{await jsonFetch('/api/auth/password',{method:'POST',body:JSON.stringify({current_password:form.current,new_password:form.next})});setDone(true);setForm({current:'',next:'',again:''});onChanged?.()}
+  catch(err){setError(err.message)}finally{setBusy(false)}
+ };
+ const field=(k,label,auto,hint)=><label>{label}<input type={show?'text':'password'} value={form[k]} onChange={set(k)} autoComplete={auto} required maxLength={128}/>{hint&&<small className="ct-hint">{hint}</small>}</label>;
  return <section className="ct-workspace">
-  <div className="ct-section-head"><div><h2>Đổi mật khẩu</h2><p>CT FOOD CRM đăng nhập bằng tài khoản Google, không lưu mật khẩu riêng.</p></div></div>
-  <Notice>Mật khẩu của bạn chính là mật khẩu tài khoản Google. Đổi mật khẩu tại trang bảo mật của Google; CRM không bao giờ hỏi hay lưu mật khẩu của bạn.</Notice>
-  <div className="ct-dashboard-grid">
-   <section className="ct-panel"><div className="ct-panel-title"><div><h3>Đổi mật khẩu Google</h3><p>Mở trang Google trong thẻ mới</p></div><KeyRound size={22}/></div>
-    <div className="ct-next-list"><div><span>1</span><span>Bấm nút bên dưới và đăng nhập Google nếu được hỏi.</span></div><div><span>2</span><span>Nhập mật khẩu mới và lưu.</span></div><div><span>3</span><span>Quay lại CRM, bấm Đăng xuất rồi đăng nhập lại bằng mật khẩu mới.</span></div></div>
-    <div className="ct-actions" style={{marginTop:16}}>{link('https://myaccount.google.com/signinoptions/password','Đổi mật khẩu Google')}<a className="ct-btn secondary" href={LOGOUT_URL}><LogOut size={17}/> Đăng xuất</a></div></section>
-   <section className="ct-panel"><div className="ct-panel-title"><div><h3>Tăng bảo mật</h3><p>Khuyến nghị cho mọi tài khoản dùng CRM</p></div><ShieldCheck size={22}/></div>
-    <div className="ct-next-list"><div><CheckCircle2 size={16}/><span>Bật xác minh 2 bước để tránh lộ dữ liệu khách hàng khi mất mật khẩu.</span></div><div><CheckCircle2 size={16}/><span>Không dùng chung tài khoản Google giữa nhiều nhân viên.</span></div></div>
-    <div className="ct-actions" style={{marginTop:16}}><a className="ct-btn secondary" href="https://myaccount.google.com/signinoptions/two-step-verification" target="_blank" rel="noopener noreferrer"><ExternalLink size={17}/> Xác minh 2 bước</a></div></section>
-  </div>
+  <div className="ct-section-head"><div><h2>{forced?'Đặt mật khẩu mới':'Đổi mật khẩu'}</h2><p>{forced?'Quản trị viên vừa cấp mật khẩu tạm cho bạn. Hãy đặt mật khẩu riêng trước khi tiếp tục.':'Mật khẩu dùng khi đăng nhập bằng tên đăng nhập. Đăng nhập bằng Google không cần mật khẩu này.'}</p></div>{forced&&<div className="ct-actions"><LogoutButton/></div>}</div>
+  {!user.username?<Notice>Tài khoản của bạn chưa có tên đăng nhập, hiện chỉ đăng nhập được bằng Google. Muốn đăng nhập bằng mật khẩu, nhờ quản trị viên cấp tên đăng nhập ở mục Quản lý tài khoản.</Notice>
+  :<div className="ct-dashboard-grid">
+   <section className="ct-panel"><div className="ct-panel-title"><div><h3>Tên đăng nhập: {user.username}</h3><p>{user.has_password?'Đổi mật khẩu hiện tại':'Bạn chưa có mật khẩu, đặt lần đầu'}</p></div><KeyRound size={22}/></div>
+    {done&&<Notice type="success">Đã đổi mật khẩu. Các thiết bị khác đang đăng nhập bằng tài khoản này đã bị đăng xuất.</Notice>}
+    {error&&<Notice type="error">{error}</Notice>}
+    <form className="formgrid ct-formgrid ct-pw-form" onSubmit={submit}>
+     {user.has_password&&field('current',forced?'Mật khẩu tạm':'Mật khẩu hiện tại','current-password')}
+     {field('next','Mật khẩu mới','new-password','Ít nhất 10 ký tự, có cả chữ và số, không chứa tên đăng nhập.')}
+     {field('again','Nhập lại mật khẩu mới','new-password')}
+     <label className="ct-check"><input type="checkbox" checked={show} onChange={e=>setShow(e.target.checked)}/> Hiện mật khẩu</label>
+     <div className="ct-actions"><button className="ct-btn primary" disabled={busy}><KeyRound size={17}/> {busy?'Đang lưu...':'Lưu mật khẩu mới'}</button></div>
+    </form></section>
+   <section className="ct-panel"><div className="ct-panel-title"><div><h3>Giữ tài khoản an toàn</h3><p>Áp dụng cho mọi người dùng CRM</p></div><ShieldCheck size={22}/></div>
+    <div className="ct-next-list"><div><CheckCircle2 size={16}/><span>Không dùng lại mật khẩu của email, ngân hàng hay mạng xã hội.</span></div><div><CheckCircle2 size={16}/><span>Không đưa mật khẩu cho đồng nghiệp; mỗi người một tài khoản.</span></div><div><CheckCircle2 size={16}/><span>Nhập sai 5 lần, tài khoản tạm khóa 15 phút.</span></div><div><CheckCircle2 size={16}/><span>Quên mật khẩu: nhờ quản trị viên cấp mật khẩu tạm.</span></div></div></section>
+  </div>}
  </section>;
 }
 function Dashboard({summary,loading,error,onRetry,onNavigate,updatedAt}){
@@ -357,7 +421,7 @@ function UserMenu({user,onNavigate}){
    <div className="ct-menu-email">{user.email}</div>
    <button role="menuitem" onClick={()=>go('profile')}><CircleUser size={17}/> Thông tin tài khoản</button>
    <button role="menuitem" onClick={()=>go('password')}><KeyRound size={17}/> Đổi mật khẩu</button>
-   <a role="menuitem" href={LOGOUT_URL}><LogOut size={17}/> Đăng xuất</a>
+   <button role="menuitem" onClick={logout}><LogOut size={17}/> Đăng xuất</button>
   </div>}
  </div>;
 }
@@ -381,6 +445,8 @@ function CRMApp(){
   try{
    const res=await fetch('/api/me',{credentials:'same-origin',headers:{Accept:'application/json'}});
    const json=await res.json().catch(()=>({}));
+   // Chưa đăng nhập: về trang đăng nhập (mật khẩu hoặc Google).
+   if(res.status===401){window.location.replace('/login');return}
    if(!res.ok||!json.ok||!json.user)throw Error(json.error||'Không xác thực được tài khoản');
    setAuth({status:'online',user:json.user,error:''});
   }catch(e){setAuth({status:'error',user:null,error:e.message})}
@@ -394,6 +460,7 @@ function CRMApp(){
  useEffect(()=>{if(auth.status==='online')loadSummary()},[auth.status]);
  useEffect(()=>{if(!drawer)return;const close=e=>{if(e.key==='Escape')setDrawer(false)};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[drawer]);
  if(auth.status!=='online')return <LoginPanel error={auth.error} loading={auth.status==='loading'} onRetry={authenticate}/>;
+ if(auth.user.auth_method==='PASSWORD'&&auth.user.must_change_password)return <div className="ct-forced"><AccountPassword user={auth.user} forced onChanged={authenticate}/></div>;
  const isAdmin=auth.user.role==='ADMIN';
  // Kho/Logistics không xem khách tiềm năng và tài chính (API cũng chặn).
  const permittedNav=NAV.filter(item=>!(auth.user.role==='LOGISTICS'&&['leads','payments','kpi'].includes(item.id)));
@@ -427,7 +494,7 @@ function CRMApp(){
      :selectedPage==='payments'?<PaymentsPage user={auth.user}/>
      :selectedPage==='kpi'?<ReportsPage user={auth.user}/>
      :selectedPage==='profile'?<AccountProfile user={auth.user}/>
-     :selectedPage==='password'?<AccountPassword/>
+     :selectedPage==='password'?<AccountPassword user={auth.user} onChanged={authenticate}/>
      :LIVE.includes(selectedPage)?<MasterList key={selectedPage} entity={selectedPage} role={auth.user.role} user={auth.user} onSaved={loadSummary}/>
      :<Pending page={selectedPage}/>}
     <footer className="ct-footer">CT FOOD CRM, phiên bản 0.4</footer>
